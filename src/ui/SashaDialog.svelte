@@ -355,7 +355,7 @@
   /* phones: Sasha peeks above the dialog box */
   @media (max-width: 720px) and (min-height: 501px) {
     .sasha {
-      left: -6vw;
+      left: 7vw;
       height: min(60vh, 520px);
       bottom: calc(var(--bottom) + 40px);
     }
@@ -373,7 +373,7 @@
       padding: 24px 18px 14px;
     }
     .box::before {
-      left: 46px;
+      left: 30%;
       top: -15px;
       border-left: 3px solid #f2d6b3;
       border-bottom: none;
@@ -394,18 +394,20 @@
 
   /* phone held sideways: Sasha on the left, a slim box between her and the tool column */
   @media (max-height: 500px) and (orientation: landscape) {
+    /* Sasha stands right next to the text: her right edge tucks under the box */
     .sasha {
-      left: calc(var(--safe-left) - 2vw);
-      height: 96vh;
-      bottom: -8vh;
+      left: auto;
+      right: calc(100% - var(--safe-left) - min(34vw, 300px) - 28px);
+      height: 88vh;
+      bottom: -18vh;
     }
     .sasha.pose-hug {
       height: 66vh;
-      bottom: -2vh;
+      bottom: -6vh;
     }
     .sasha.pose-pet {
-      height: 46vh;
-      bottom: 0;
+      height: 44vh;
+      bottom: -1vh;
     }
     .box {
       left: calc(var(--safe-left) + min(34vw, 300px));
