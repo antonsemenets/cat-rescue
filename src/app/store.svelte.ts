@@ -76,6 +76,12 @@ class AppState {
     this.persist();
   }
 
+  markBriefingSeen(levelId: string) {
+    if (this.save.seenBriefings.includes(levelId)) return;
+    this.save.seenBriefings = [...this.save.seenBriefings, levelId];
+    this.persist();
+  }
+
   markIntroSeen() {
     if (!this.save.seenIntro) {
       this.save.seenIntro = true;

@@ -73,6 +73,16 @@ export interface HintDef {
   text: string;
 }
 
+export type SashaPose = 'wave' | 'hold' | 'hug' | 'pet';
+
+/** One line of Sasha's briefing before a level. */
+export interface IntroLine {
+  pose: SashaPose;
+  text: string;
+  /** what to point at while the line is shown */
+  focus?: { tool?: string; cat?: string; cells?: XY[] };
+}
+
 export type SolutionStep =
   | { type: 'placeTrap'; cell: XY; dir: Dir }
   | { type: 'rotateTrap'; trapId: string; dir: Dir }
@@ -99,6 +109,10 @@ export interface LevelDef {
   inventory: Partial<Inventory>;
   stars: StarRules;
   hints?: HintDef[];
+  /** Sasha's short briefing shown before the level */
+  intro?: IntroLine[];
+  /** Sasha's line on the victory screen */
+  outro?: string;
   /** a known winning sequence — verified by the test-suite */
   solution: SolutionStep[];
 }
@@ -189,6 +203,14 @@ export function validateLevel(def: LevelDef): string[] {
   const s = def.stars;
   if (!(s.twoStarTurns >= s.threeStarTurns)) errors.push('twoStarTurns must be >= threeStarTurns');
   if (def.solution.length === 0) errors.push('level has no reference solution');
+  const tools = ['trap', 'rotate', 'kibble', 'tuna', 'box', 'toy', 'hand'];
+  for (const line of def.intro ?? []) {
+    if (!['wave', 'hold', 'hug', 'pet'].includes(line.pose)) errors.push(`intro pose '${line.pose}' unknown`);
+    if (!line.text.trim()) errors.push('intro line without text');
+    if (line.focus?.tool && !tools.includes(line.focus.tool)) errors.push(`intro focus tool '${line.focus.tool}' unknown`);
+    if (line.focus?.cat && !def.cats.some((c) => c.id === line.focus!.cat)) errors.push(`intro focus cat '${line.focus.cat}' unknown`);
+    for (const c of line.focus?.cells ?? []) if (!inBounds(xy(c), w, h)) errors.push(`intro focus cell ${c} out of bounds`);
+  }
   return errors;
 }
 

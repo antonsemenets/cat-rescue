@@ -34,6 +34,8 @@ export interface SaveData {
   rescued: Record<string, RescuedCat>;
   settings: Settings;
   seenIntro: boolean;
+  /** levels whose briefing by Sasha was already shown */
+  seenBriefings: string[];
 }
 
 export interface StorageLike {
@@ -59,7 +61,7 @@ export function defaultSettings(): Settings {
 }
 
 export function defaultSave(): SaveData {
-  return { version: 1, levels: {}, rescued: {}, settings: defaultSettings(), seenIntro: false };
+  return { version: 1, levels: {}, rescued: {}, settings: defaultSettings(), seenIntro: false, seenBriefings: [] };
 }
 
 function memoryStorage(): StorageLike {
@@ -124,7 +126,8 @@ export function parseSave(raw: string | null): SaveData {
       showPaths: s.showPaths !== false,
       showHints: s.showHints !== false,
     };
-    return { version: 1, levels, rescued, settings, seenIntro: !!d.seenIntro };
+    const seenBriefings = Array.isArray(d.seenBriefings) ? d.seenBriefings.filter((x): x is string => typeof x === 'string') : [];
+    return { version: 1, levels, rescued, settings, seenIntro: !!d.seenIntro, seenBriefings };
   } catch {
     return base;
   }

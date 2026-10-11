@@ -46,5 +46,6 @@
   .screen {
     position: absolute;
     inset: 0;
+    overflow: clip;
   }
 </style>

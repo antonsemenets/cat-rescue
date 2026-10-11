@@ -50,6 +50,11 @@ export class GameSession {
   loading = $state(true);
   canUndo = $state(false);
   hoverText = $state<string | null>(null);
+  /** Sasha's briefing is on screen — the board ignores input meanwhile */
+  briefing = $state(false);
+  focusTool = $state<Tool | null>(null);
+  focusCat = $state<string | null>(null);
+  focusCells = $state<Cell[]>([]);
 
   private view: BoardView | null = null;
   private shownHints = new Set<string>();
@@ -83,8 +88,37 @@ export class GameSession {
     await view.loadLevel(this.def, this.state);
     this.loading = false;
     view.sync(this.state);
-    this.triggerHint('start');
+    const auto = app.settings.showHints && !!this.def.intro?.length && !app.save.seenBriefings.includes(this.def.id);
+    if (auto) this.openBriefing();
+    else this.triggerHint('start');
     this.refresh();
+  }
+
+  /** Sasha points at a tool, a cat or some cells while she talks. */
+  setFocus(f: { tool?: string; cat?: string; cells?: [number, number][] } | undefined) {
+    this.focusTool = (f?.tool as Tool) ?? null;
+    this.focusCat = f?.cat ?? null;
+    this.focusCells = (f?.cells ?? []).map(([x, y]) => ({ x, y }));
+    this.refresh();
+  }
+
+  openBriefing() {
+    if (!this.def.intro?.length) return;
+    this.tool = null;
+    this.pendingTrap = null;
+    this.pendingRotate = null;
+    this.hoverText = null;
+    this.hint = null;
+    this.briefing = true;
+    this.refresh();
+  }
+
+  closeBriefing() {
+    this.briefing = false;
+    this.setFocus(undefined);
+    // the briefing already covered what the start hint says
+    this.shownHints.add('start');
+    app.markBriefingSeen(this.def.id);
   }
 
   detach() {
@@ -153,7 +187,7 @@ export class GameSession {
   }
 
   selectTool(t: Tool | null) {
-    if (this.replaying || this.state.status !== 'playing') return;
+    if (this.briefing || this.replaying || this.state.status !== 'playing') return;
     audio.unlock();
     if (t && this.toolDisabledReason(t)) {
       this.say(this.toolDisabledReason(t)!);
@@ -278,7 +312,7 @@ export class GameSession {
   }
 
   onTap(cell: Cell, catId: string | null) {
-    if (this.loading || this.replaying) return;
+    if (this.loading || this.briefing || this.replaying) return;
     audio.unlock();
     if (this.state.status !== 'playing') return;
     const s = this.state;
@@ -370,7 +404,7 @@ export class GameSession {
   // turn flow
 
   act(action: Action) {
-    if (this.loading || this.replaying || this.state.status !== 'playing') return;
+    if (this.loading || this.briefing || this.replaying || this.state.status !== 'playing') return;
     const out = this.core.act(action);
     if (!out.ok) {
       this.say(out.reason);
@@ -420,7 +454,7 @@ export class GameSession {
   }
 
   undo() {
-    if (this.loading || this.replaying || !this.core.canUndo) return;
+    if (this.loading || this.briefing || this.replaying || !this.core.canUndo) return;
     const s = this.core.undo();
     if (!s) return;
     audio.play('undo');
@@ -583,9 +617,19 @@ export class GameSession {
       o.hover = { cell: this.hover, ok: !!r.action || (neutral && !r.reason) };
     }
 
+    // Sasha pointing at things during her briefing
+    if (this.focusCells.length) {
+      o.zones.push({ cells: this.focusCells, color: 0xf2a65a, alpha: 0.32 });
+      o.selectedCells = [...o.selectedCells, ...this.focusCells];
+    }
+    if (this.focusCat) {
+      o.selectedCatId = this.focusCat;
+      o.focusCatId = this.focusCat;
+    }
+
     // selection
     const sel = this.selection;
-    if (sel?.kind === 'cat') {
+    if (sel?.kind === 'cat' && !this.briefing) {
       o.selectedCatId = sel.id;
       const cat = s.cats.find((c) => c.id === sel.id);
       if (cat && cat.mode !== 'trapped') o.zones.push(...this.senseZones(cat.id));

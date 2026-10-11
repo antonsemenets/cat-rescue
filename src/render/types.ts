@@ -31,6 +31,8 @@ export interface Overlay {
   ghosts: Ghost[];
   paths: PathPreview[];
   selectedCatId: string | null;
+  /** cat Sasha is talking about — gets a bouncing arrow */
+  focusCatId: string | null;
   selectedCells: Cell[];
   zones: Zone[];
   emphasizeShade: boolean;
@@ -42,6 +44,7 @@ export const EMPTY_OVERLAY: Overlay = {
   ghosts: [],
   paths: [],
   selectedCatId: null,
+  focusCatId: null,
   selectedCells: [],
   zones: [],
   emphasizeShade: false,

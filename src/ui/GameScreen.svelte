@@ -12,6 +12,10 @@
   import Toolbar from './hud/Toolbar.svelte';
   import TopBar from './hud/TopBar.svelte';
   import VictoryModal from './hud/VictoryModal.svelte';
+  import SashaDialog from './SashaDialog.svelte';
+  import { SPRITES, preloadSprites } from '../art/sprites';
+
+  preloadSprites(['sasha-wave', 'sasha-hold', 'sasha-hug', 'sasha-pet', 'sasha-face']);
 
   const def = levelById(app.levelId)!;
   const session = new GameSession(def);
@@ -61,7 +65,7 @@
   });
 
   function onkey(e: KeyboardEvent) {
-    if (app.settingsOpen || paused || session.showVictory) return;
+    if (app.settingsOpen || paused || session.showVictory || session.briefing) return;
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     // a focused button handles Space/Enter itself — don't trigger a second action
@@ -111,9 +115,19 @@
 
   <TopBar {session} onpause={() => (paused = true)} bind:height={topH} />
 
-  {#if session.hint && !session.replaying}
+  {#if session.briefing && def.intro}
+    <SashaDialog
+      lines={def.intro}
+      title="Уровень {def.order} · {def.title}"
+      bottomOffset={botH + 12}
+      onfocus={(f) => session.setFocus(f)}
+      onclose={() => session.closeBriefing()}
+    />
+  {/if}
+
+  {#if session.hint && !session.replaying && !session.briefing}
     <div class="hint card" transition:fly={{ y: -10, duration: 220 }} style:top="{topH + 4}px">
-      <span class="hint-ico"><Icon name="bulb" size={20} /></span>
+      <img class="hint-ava" src={SPRITES['sasha-face']} alt="Саша" />
       <p>{session.hint}</p>
       <button class="hint-x" onclick={() => session.dismissHint()} aria-label="Скрыть подсказку"><Icon name="close" size={16} /></button>
     </div>
@@ -185,6 +199,7 @@
     position: absolute;
     inset: 0;
     overflow: hidden;
+    overflow: clip;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -266,15 +281,22 @@
     font-size: 15px;
     line-height: 1.3;
   }
-  .hint-ico {
-    width: 34px;
-    height: 34px;
-    border-radius: 12px;
-    display: grid;
-    place-items: center;
-    background: #fff3c4;
-    color: var(--gold-dark);
+  .hint-ava {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
     flex-shrink: 0;
+    background: #fde3c6;
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 0 5px var(--orange);
+    animation: avaPop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  }
+  @keyframes avaPop {
+    from {
+      transform: scale(0.4) rotate(-20deg);
+      opacity: 0;
+    }
   }
   .hint-x {
     width: 30px;

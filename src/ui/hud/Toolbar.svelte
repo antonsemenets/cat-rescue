@@ -33,7 +33,7 @@
   });
 </script>
 
-<div class="toolbar" bind:clientHeight={height}>
+<div class="toolbar" class:raised={session.briefing} bind:clientHeight={height}>
   <div class="tools" role="toolbar" aria-label="Инструменты" bind:this={toolsEl} onscroll={updateFade} class:fade-r={fadeR} class:fade-l={fadeL}>
     {#each tools as t, i (t)}
       {@const count = session.toolCount(t)}
@@ -41,6 +41,7 @@
       <button
         class="tool"
         class:active={session.tool === t}
+        class:focus={session.focusTool === t}
         class:off
         onclick={() => session.selectTool(t)}
         aria-pressed={session.tool === t}
@@ -130,6 +131,42 @@
   .tool.off {
     opacity: 0.42;
     filter: grayscale(0.7);
+  }
+  /* while Sasha talks the toolbar floats above her dialog, without taking input */
+  .toolbar.raised {
+    z-index: 46;
+    pointer-events: none;
+  }
+  .tool.focus {
+    opacity: 1;
+    filter: none;
+    animation: focusPulse 1.1s ease-in-out infinite;
+  }
+  .tool.focus::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 22px;
+    border: 3px solid var(--orange);
+    animation: focusRing 1.1s ease-out infinite;
+  }
+  @keyframes focusPulse {
+    50% {
+      transform: translateY(-6px) scale(1.06);
+      box-shadow:
+        0 0 0 3px var(--orange),
+        0 8px 18px rgba(242, 166, 90, 0.45);
+    }
+  }
+  @keyframes focusRing {
+    from {
+      opacity: 1;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 0;
+      transform: scale(1.25);
+    }
   }
   .art {
     display: grid;

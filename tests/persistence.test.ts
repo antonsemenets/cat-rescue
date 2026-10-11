@@ -52,6 +52,11 @@ describe('persistence', () => {
     expect(() => writeSave(defaultSave(), broken)).not.toThrow();
   });
 
+  it('remembers which briefings were shown and ignores garbage there', () => {
+    expect(parseSave(JSON.stringify({ version: 1, seenBriefings: ['l1', 5, 'l2'] })).seenBriefings).toEqual(['l1', 'l2']);
+    expect(parseSave(JSON.stringify({ version: 1, seenBriefings: 'l1' })).seenBriefings).toEqual([]);
+  });
+
   it('migrates renamed cats in old saves (Тень → Дартик)', () => {
     const d = parseSave(JSON.stringify({ version: 1, levels: {}, rescued: { ten: { levelId: 'l3', rescuedAt: 5, pets: 3 } }, settings: {} }));
     expect(d.rescued.dartik).toEqual({ levelId: 'l3', rescuedAt: 5, pets: 3 });

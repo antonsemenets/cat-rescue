@@ -162,6 +162,7 @@ export class BoardScene extends Phaser.Scene {
   private pathG!: Phaser.GameObjects.Graphics;
   private ghostG!: Phaser.GameObjects.Graphics;
   private ghostImgs: Phaser.GameObjects.Image[] = [];
+  private focusArrow: Phaser.GameObjects.Graphics | null = null;
   private shadeImgs: Phaser.GameObjects.Image[] = [];
   private staticObjs: Phaser.GameObjects.GameObject[] = [];
   private tall: TallView[] = [];
@@ -315,6 +316,8 @@ export class BoardScene extends Phaser.Scene {
     this.noises.clear();
     this.transient.clear();
     this.groundG?.destroy();
+    this.focusArrow?.destroy();
+    this.focusArrow = null;
     this.dangerG?.destroy();
     this.overlayG?.destroy();
     this.pathG?.destroy();
@@ -392,6 +395,18 @@ export class BoardScene extends Phaser.Scene {
     this.overlayG = this.add.graphics().setDepth(-9300);
     this.pathG = this.add.graphics().setDepth(-9200);
     this.ghostG = this.add.graphics().setDepth(FX_DEPTH - 10);
+    const a = this.add.graphics().setDepth(FX_DEPTH + 20).setVisible(false);
+    a.fillStyle(0x4c3b3a, 0.35);
+    a.fillTriangle(-15, 3, 15, 3, 0, 25);
+    a.fillStyle(0xf2a65a, 1);
+    a.lineStyle(3, 0xffffff, 1);
+    a.fillTriangle(-15, 0, 15, 0, 0, 22);
+    a.strokeTriangle(-15, 0, 15, 0, 0, 22);
+    a.fillRect(-6, -16, 12, 17);
+    a.strokeRect(-6, -16, 12, 17);
+    a.fillStyle(0xf2a65a, 1);
+    a.fillRect(-4.5, -2, 9, 5);
+    this.focusArrow = a;
   }
 
   private connects(x: number, y: number): boolean {
@@ -1383,6 +1398,15 @@ export class BoardScene extends Phaser.Scene {
           v.zTimer = 1500 + (v.phase * 100) % 400;
           this.spawnZ(v);
         }
+      }
+    }
+    // Sasha's pointer above the cat she talks about
+    if (this.focusArrow) {
+      const v = this.overlay.focusCatId ? this.cats.get(this.overlay.focusCatId) : undefined;
+      this.focusArrow.setVisible(!!v);
+      if (v) {
+        const bob = reduced ? 0 : Math.abs(Math.sin(time / 260)) * 12;
+        this.focusArrow.setPosition(v.c.x, v.c.y - CAT_SIZE * 1.05 - bob);
       }
     }
     // noise waves and danger pulse

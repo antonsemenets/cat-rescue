@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '../src/core/gameCore';
-import { createInitialState, solutionToActions, validateLevel } from '../src/core/level';
+import { createInitialState, solutionToActions, validateLevel, type LevelDef } from '../src/core/level';
 import { computeResult } from '../src/core/scoring';
 import { isTurnError, runTurn } from '../src/core/turnSystem';
 import type { Action, GameState } from '../src/core/types';
@@ -42,6 +42,11 @@ describe('levels', () => {
         expect(res.rescued).toBe(def.cats.length);
       });
 
+      it('has a briefing by Sasha and a victory line', () => {
+        expect(def.intro?.length ?? 0).toBeGreaterThanOrEqual(2);
+        expect(def.outro?.trim().length ?? 0).toBeGreaterThan(0);
+      });
+
       it('cannot be solved by just doing nothing', () => {
         const s = runUntilWon(createInitialState(def), waits(40));
         expect(s.status).toBe('playing');
@@ -61,6 +66,11 @@ describe('levels', () => {
       }
     });
   }
+
+  it('validation catches a broken briefing', () => {
+    const broken = { ...LEVELS[0], intro: [{ pose: 'dance', text: '', focus: { cat: 'nobody', tool: 'laser' } }] } as unknown as LevelDef;
+    expect(validateLevel(broken).length).toBeGreaterThanOrEqual(4);
+  });
 
   it('level 4: baiting the shady trap first lets Bublik steal it — a dead end', () => {
     const def = LEVELS[3];

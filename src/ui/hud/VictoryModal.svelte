@@ -8,6 +8,7 @@
   import { nextLevel } from '../../levels';
   import Icon from '../Icon.svelte';
   import Modal from '../Modal.svelte';
+  import { SPRITES } from '../../art/sprites';
 
   let { session, onnext, onshelter }: { session: GameSession; onnext: () => void; onshelter: () => void } = $props();
   const r = $derived(session.result!);
@@ -41,6 +42,13 @@
         </span>
       {/each}
     </div>
+
+    {#if session.def.outro}
+      <div class="sasha-says" in:scale={{ delay: 900, duration: 420, start: 0.7, easing: backOut }}>
+        <img src={SPRITES['sasha-face']} alt="Саша" />
+        <p>{session.def.outro}</p>
+      </div>
+    {/if}
 
     <div class="cats">
       {#each session.def.cats as c, i (c.id)}
@@ -137,6 +145,46 @@
   }
   .star.mid {
     transform: translateY(-8px);
+  }
+  .sasha-says {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+  }
+  .sasha-says img {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: #fde3c6;
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 0 5px var(--orange);
+  }
+  .sasha-says p {
+    position: relative;
+    flex: 1;
+    font-weight: 800;
+    font-size: 15px;
+    line-height: 1.35;
+    padding: 10px 14px;
+    border-radius: 16px;
+    background: #fff4e6;
+    border: 2px solid #f2d6b3;
+  }
+  .sasha-says p::before {
+    content: '';
+    position: absolute;
+    left: -9px;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    background: #fff4e6;
+    border-left: 2px solid #f2d6b3;
+    border-bottom: 2px solid #f2d6b3;
+    transform: translateY(-50%) rotate(45deg);
   }
   .cats {
     display: flex;

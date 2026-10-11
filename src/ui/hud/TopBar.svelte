@@ -3,6 +3,7 @@
   import { app } from '../../app/store.svelte';
   import CatPortrait from '../CatPortrait.svelte';
   import Icon from '../Icon.svelte';
+  import { SPRITES } from '../../art/sprites';
 
   let { session, onpause, height = $bindable(0) }: { session: GameSession; onpause: () => void; height?: number } = $props();
 
@@ -47,6 +48,11 @@
         </span>
       {/each}
     </div>
+    {#if session.def.intro?.length}
+      <button class="icon-btn sasha" onclick={() => session.openBriefing()} disabled={session.replaying || session.briefing || session.state.status !== 'playing'} aria-label="Саша подскажет" title="Саша подскажет">
+        <img src={SPRITES['sasha-face']} alt="" />
+      </button>
+    {/if}
     <button class="icon-btn speed" onclick={cycleSpeed} aria-label="Скорость анимаций" title="Скорость анимаций">{app.settings.animSpeed}×</button>
     <button class="icon-btn" onclick={() => session.undo()} disabled={!session.canUndo || session.replaying} aria-label="Отменить ход" title="Отменить ход (Z)"><Icon name="undo" /></button>
     <button class="icon-btn" onclick={() => session.restart()} disabled={session.state.turn === 0 && !session.replaying} aria-label="Начать заново" title="Заново (Shift+R)"><Icon name="restart" /></button>
@@ -169,6 +175,16 @@
     font-weight: 900;
     font-size: 15px;
   }
+  .sasha {
+    padding: 0;
+    overflow: hidden;
+  }
+  .sasha img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 16px;
+  }
   .mini {
     display: none;
     align-items: center;
@@ -198,7 +214,21 @@
       display: inline-flex;
     }
     .center {
-      padding: 4px 12px;
+      padding: 4px 10px;
+      gap: 8px;
+    }
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+    }
+    .turn {
+      font-size: 22px;
+      min-width: 26px;
+    }
+    .tiers small {
+      margin-left: 3px;
+      font-size: 12px;
     }
     .left,
     .right {
