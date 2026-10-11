@@ -138,6 +138,7 @@
     filter: drop-shadow(0 1px 0 var(--gold-dark));
   }
   .tiers small {
+    white-space: nowrap;
     margin-left: 6px;
     font-weight: 800;
     color: var(--ink-soft);
@@ -186,6 +187,7 @@
     border-radius: 16px;
   }
   .mini {
+    white-space: nowrap;
     display: none;
     align-items: center;
     gap: 3px;

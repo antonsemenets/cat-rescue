@@ -353,7 +353,7 @@
   }
 
   /* phones: Sasha peeks above the dialog box */
-  @media (max-width: 720px) {
+  @media (max-width: 720px) and (min-height: 501px) {
     .sasha {
       left: -6vw;
       height: min(60vh, 520px);
