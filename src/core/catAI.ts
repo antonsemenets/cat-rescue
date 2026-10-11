@@ -45,12 +45,22 @@ export interface Intent {
   remaining: number;
 }
 
-export function catStepCost(snap: Snapshot, cat: Cat): StepCost {
+export interface CostOptions {
+  /** may the route enter trap cells? Only routes to bait inside a trap do. */
+  traps?: boolean;
+}
+
+export function catStepCost(snap: Snapshot, cat: Cat, opts: CostOptions = {}): StepCost {
   const { s, cover, danger } = snap;
+  const allowTraps = opts.traps !== false;
+  // cells held by other cats are costly (not blocked): cats walk around a dozing neighbour
+  const others = new Set(s.cats.filter((k) => k.id !== cat.id && k.mode !== 'trapped').map((k) => k.pos.y * s.width + k.pos.x));
   return (from: Cell, to: Cell) => {
     if (!canStep(s, from, to)) return Infinity;
+    if (!allowTraps && trapAt(s, to)) return Infinity;
     let c: number = RULES.stepCost;
     const i = idx(to, s.width);
+    if (others.has(i)) c += RULES.crowdPenalty;
     if (!cover[i]) {
       const p = RULES.openPenalty[Math.max(0, Math.min(3, cat.fear))];
       if (!Number.isFinite(p)) return Infinity;
@@ -178,7 +188,9 @@ export function decideCat(snap: Snapshot, cat: Cat): Intent {
     return it;
   }
 
+  // `map` may lead into traps (for bait); `safe` never does (patrol, home, hiding)
   const map = buildCostMap(s.width, s.height, cat.pos, catStepCost(snap, cat));
+  const safe = buildCostMap(s.width, s.height, cat.pos, catStepCost(snap, cat, { traps: false }));
   const threatened = cat.fear >= 1 && inDanger(snap, cat.pos);
 
   // 1. Threat — flee to the nearest safe hiding spot.
@@ -198,7 +210,7 @@ export function decideCat(snap: Snapshot, cat: Cat): Intent {
       for (let x = 0; x < s.width; x++) {
         const c = { x, y };
         if (!isHidingSpot(s, c) || inDanger(snap, c) || occupied(c)) continue;
-        const cost = costTo(map, c);
+        const cost = costTo(safe, c);
         if (!Number.isFinite(cost)) continue;
         if (!best || cost < best.cost || (cost === best.cost && compareCells(c, best.cell) < 0)) best = { cell: c, cost };
       }
@@ -207,7 +219,7 @@ export function decideCat(snap: Snapshot, cat: Cat): Intent {
     it.priority = 0;
     if (wasCalm) it.emotes.push('alert');
     if (best) {
-      const path = pathTo(map, best.cell) ?? [];
+      const path = pathTo(safe, best.cell) ?? [];
       it.target = { kind: 'hide', cell: best.cell };
       it.path = path;
       it.move = path[0] ?? null;
@@ -259,11 +271,22 @@ export function decideCat(snap: Snapshot, cat: Cat): Intent {
     }
     const next = path[0];
     const nextTrap = trapAt(s, next);
+    // queue politely: never block the doorway while another cat is inside the trap
+    const after = path[1] ? trapAt(s, path[1]) : undefined;
+    if (!nextTrap && after && after.part === 'front' && eq(next, trapApproach(after.trap)) && catsInsideTrap(s, after.trap).some((k) => k.id !== cat.id)) {
+      it.mode = 'interested';
+      it.activity = 'sit';
+      return it;
+    }
     if (nextTrap && nextTrap.part === 'front' && eq(cat.pos, trapApproach(nextTrap.trap))) {
       const others = catsInsideTrap(s, nextTrap.trap).filter((k) => k.id !== cat.id);
       if (others.length > 0) {
+        // standing in the doorway: step aside so the cat inside can come out
+        const step = sideStep(snap, cat);
         it.mode = 'interested';
-        it.activity = 'sit';
+        it.activity = step ? 'walk' : 'sit';
+        it.move = step;
+        it.remaining = step ? 1 : 0;
         return it;
       }
       if (cat.fear > cat.trust) {
@@ -285,11 +308,14 @@ export function decideCat(snap: Snapshot, cat: Cat): Intent {
   it.mode = 'idle';
   it.priority = 4;
   if (cat.patrol.length > 0) {
-    let pi = cat.patrolIndex % cat.patrol.length;
-    if (eq(cat.pos, cat.patrol[pi])) pi = (pi + 1) % cat.patrol.length;
+    const n = cat.patrol.length;
+    let pi = cat.patrolIndex % n;
+    if (eq(cat.pos, cat.patrol[pi])) pi = (pi + 1) % n;
+    // a waypoint that became unreachable (e.g. a trap was placed on it) is skipped
+    for (let k = 0; k < n && !eq(cat.patrol[pi], cat.pos) && !pathTo(safe, cat.patrol[pi]); k++) pi = (pi + 1) % n;
     it.patrolIndex = pi;
     const goal = cat.patrol[pi];
-    const path = eq(goal, cat.pos) ? [] : pathTo(map, goal);
+    const path = eq(goal, cat.pos) ? [] : pathTo(safe, goal);
     it.target = { kind: 'patrol', cell: goal };
     if (path && path.length > 0) {
       it.path = path;
@@ -302,7 +328,7 @@ export function decideCat(snap: Snapshot, cat: Cat): Intent {
     return it;
   }
   if (!eq(cat.pos, cat.home)) {
-    const path = pathTo(map, cat.home);
+    const path = pathTo(safe, cat.home);
     it.target = { kind: 'home', cell: cat.home };
     if (path && path.length > 0) {
       it.path = path;
@@ -323,7 +349,7 @@ function fleeStep(snap: Snapshot, cat: Cat): Cell | null {
   const noises = s.noises.filter((n) => n.active);
   if (noises.length === 0) return null;
   const dist = (c: Cell) => Math.min(...noises.map((n) => manhattan(n.cell, c)));
-  const cost = catStepCost({ ...snap, danger: snap.danger.map(() => false) }, cat);
+  const cost = catStepCost({ ...snap, danger: snap.danger.map(() => false) }, cat, { traps: false });
   let best: Cell | null = null;
   let bestD = dist(cat.pos);
   for (const d of DIRS) {
@@ -336,6 +362,16 @@ function fleeStep(snap: Snapshot, cat: Cat): Cell | null {
     }
   }
   return best;
+}
+
+/** First free neighbour (N, E, S, W) outside any trap — used to clear a doorway. */
+function sideStep(snap: Snapshot, cat: Cat): Cell | null {
+  const cost = catStepCost(snap, cat, { traps: false });
+  for (const d of DIRS) {
+    const n = add(cat.pos, d);
+    if (Number.isFinite(cost(cat.pos, n))) return n;
+  }
+  return null;
 }
 
 /** Intents of all cats from one snapshot — order independent. */

@@ -498,7 +498,7 @@ export class BoardScene extends Phaser.Scene {
     v.cell = { ...cat.pos };
     v.c.setDepth(this.catDepth(cat.pos, cat.mode === 'trapped', cat.mode === 'hiding'));
     v.c.setVisible(true).setAlpha(1);
-    v.sprite.setY(4).setAngle(0);
+    v.sprite.setPosition(0, 4).setAngle(0);
     const inTrap = cat.mode === 'trapped' || !!this.state.traps.find((t) => eq(t.back, cat.pos) || eq(add(t.back, t.dir), cat.pos));
     v.sprite.setScale(v.baseScale * (inTrap ? 0.82 : 1));
     v.shadow.setVisible(cat.mode !== 'hiding');
@@ -670,6 +670,9 @@ export class BoardScene extends Phaser.Scene {
       const v = this.traps.get(t.id) ?? this.makeTrap(t);
       v.closed = t.occupiedBy ? 1 : 0;
       v.occupied = !!t.occupiedBy;
+      v.back.setAlpha(1);
+      v.front.setAlpha(1);
+      v.baitKind = '__rebuild'; // an interrupted tween may have shrunk the bait sprite
       this.redrawTrap(v, t);
     }
     // foods

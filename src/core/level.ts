@@ -245,7 +245,7 @@ export function createInitialState(def: LevelDef): GameState {
     foods: (def.foods ?? []).map((f, i) => ({ id: `lvlfood${i}`, kind: f.kind, cell: xy(f.pos), ttl: 99 })),
     boxes: [],
     toys: [],
-    gates: (def.gates ?? []).map((g) => ({ id: g.id, cell: xy(g.pos), open: !!g.open, autoClose: g.autoClose ?? 0, openTimer: 0 })),
+    gates: (def.gates ?? []).map((g) => ({ id: g.id, cell: xy(g.pos), open: !!g.open, autoClose: g.autoClose ?? 0, openTimer: g.open ? (g.autoClose ?? 0) : 0 })),
     noises: (def.noises ?? []).map((n) => ({
       id: n.id,
       kind: n.kind,

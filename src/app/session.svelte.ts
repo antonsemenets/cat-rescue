@@ -82,6 +82,7 @@ export class GameSession {
     this.loading = true;
     await view.loadLevel(this.def, this.state);
     this.loading = false;
+    view.sync(this.state);
     this.triggerHint('start');
     this.refresh();
   }
@@ -277,7 +278,7 @@ export class GameSession {
   }
 
   onTap(cell: Cell, catId: string | null) {
-    if (this.replaying) return;
+    if (this.loading || this.replaying) return;
     audio.unlock();
     if (this.state.status !== 'playing') return;
     const s = this.state;
@@ -358,6 +359,7 @@ export class GameSession {
   }
 
   startRotate(trapId: string) {
+    if (this.loading || this.replaying || this.state.status !== 'playing') return;
     this.tool = 'rotate';
     this.pendingRotate = trapId;
     this.triggerHint('tool:rotate');
@@ -368,7 +370,7 @@ export class GameSession {
   // turn flow
 
   act(action: Action) {
-    if (this.replaying || this.state.status !== 'playing') return;
+    if (this.loading || this.replaying || this.state.status !== 'playing') return;
     const out = this.core.act(action);
     if (!out.ok) {
       this.say(out.reason);
@@ -418,7 +420,7 @@ export class GameSession {
   }
 
   undo() {
-    if (this.replaying || !this.core.canUndo) return;
+    if (this.loading || this.replaying || !this.core.canUndo) return;
     const s = this.core.undo();
     if (!s) return;
     audio.play('undo');
@@ -431,11 +433,13 @@ export class GameSession {
     this.tool = null;
     this.pendingTrap = null;
     this.pendingRotate = null;
+    if (this.selection && this.selection.kind !== 'cat') this.selection = null;
     this.view?.sync(s);
     this.refresh();
   }
 
   restart() {
+    if (this.loading) return;
     this.stopReplay();
     const s = this.core.restart();
     audio.play('undo');

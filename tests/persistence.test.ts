@@ -52,6 +52,12 @@ describe('persistence', () => {
     expect(() => writeSave(defaultSave(), broken)).not.toThrow();
   });
 
+  it('migrates renamed cats in old saves (Тень → Дартик)', () => {
+    const d = parseSave(JSON.stringify({ version: 1, levels: {}, rescued: { ten: { levelId: 'l3', rescuedAt: 5, pets: 3 } }, settings: {} }));
+    expect(d.rescued.dartik).toEqual({ levelId: 'l3', rescuedAt: 5, pets: 3 });
+    expect(d.rescued.ten).toBeUndefined();
+  });
+
   it('unlocks levels sequentially', () => {
     let d = defaultSave();
     const ids = ['l1', 'l2', 'l3'];

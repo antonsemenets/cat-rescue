@@ -72,7 +72,9 @@ export function applyPlaceToy(s: GameState, c: Cell, events: GameEvent[]): void 
 export function processEating(s: GameState, movedIds: Set<string>, events: GameEvent[]): void {
   const cats = [...s.cats].sort((a, b) => (a.id < b.id ? -1 : 1));
   for (const cat of cats) {
-    if (cat.mode === 'trapped' || cat.mode === 'frightened' || !movedIds.has(cat.id)) continue;
+    if (cat.mode === 'trapped' || cat.mode === 'frightened') continue;
+    // eat on arrival, or when already standing on the food (e.g. after a scare)
+    if (!movedIds.has(cat.id) && cat.activity !== 'eat') continue;
     if (cat.hunger < 1) continue;
     const food = foodAt(s, cat.pos);
     if (!food) continue;

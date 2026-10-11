@@ -211,7 +211,7 @@
           <div>
             <h2>{sel.name}</h2>
             <p class="persona">{sel.personality}</p>
-            <p class="from">Спасён(а): «{sel.levelTitle}»</p>
+            <p class="from">История спасения: «{sel.levelTitle}»</p>
           </div>
         </div>
         <p class="bio">{sel.bio}</p>

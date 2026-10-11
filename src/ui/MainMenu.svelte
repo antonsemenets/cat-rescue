@@ -15,7 +15,7 @@
   const started = $derived(Object.keys(app.save.levels).length > 0);
   const ryzhik = allCats[0].look;
   const plush = allCats.find((c) => c.id === 'plyushka')!.look;
-  const ten = allCats.find((c) => c.id === 'ten')!.look;
+  const dartik = allCats.find((c) => c.id === 'dartik')!.look;
 
   function play() {
     audio.unlock();
@@ -32,7 +32,7 @@
 <div class="menu">
   <Scenery />
   <div class="fence-cats" aria-hidden="true">
-    <div class="cat sleeping">{@html catSvg(ten, 'sleep', { size: 120, uid: 'm1', hooks: true })}</div>
+    <div class="cat sleeping">{@html catSvg(dartik, 'sleep', { size: 120, uid: 'm1', hooks: true })}</div>
   </div>
   <div class="ground-cats" aria-hidden="true">
     <div class="cat sitting">{@html catSvg(ryzhik, 'sit', { size: 150, uid: 'm2', hooks: true })}</div>

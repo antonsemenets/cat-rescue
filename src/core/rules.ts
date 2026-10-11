@@ -11,6 +11,8 @@ export const RULES = {
   /** extra cost of a cell inside an active noise zone */
   dangerPenaltyBrave: 10,
   dangerPenaltyShy: 40,
+  /** extra cost of a cell another cat is standing on */
+  crowdPenalty: 25,
 
   /** turns ground food stays before it goes stale */
   foodTtl: 8,

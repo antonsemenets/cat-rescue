@@ -88,6 +88,9 @@ export function browserStorage(): StorageLike {
   return fallback;
 }
 
+/** Cat ids that were renamed — old saves keep their rescued cats. */
+const LEGACY_CAT_IDS: Record<string, string> = { ten: 'dartik' };
+
 const clamp01 = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : d);
 
 /** Parse and sanitize — never trust what is in storage. */
@@ -109,7 +112,7 @@ export function parseSave(raw: string | null): SaveData {
     const rescued: Record<string, RescuedCat> = {};
     for (const [id, r] of Object.entries(d.rescued ?? {})) {
       if (!r || typeof r !== 'object' || typeof r.levelId !== 'string') continue;
-      rescued[id] = { levelId: r.levelId, rescuedAt: Number(r.rescuedAt) || 0, pets: Math.max(0, Math.floor(Number(r.pets) || 0)) };
+      rescued[LEGACY_CAT_IDS[id] ?? id] = { levelId: r.levelId, rescuedAt: Number(r.rescuedAt) || 0, pets: Math.max(0, Math.floor(Number(r.pets) || 0)) };
     }
     const s = (d.settings ?? {}) as Partial<Settings>;
     const settings: Settings = {

@@ -104,7 +104,7 @@ export function canStep(s: GameState, from: Cell, to: Cell): boolean {
     if (fromTrap.part === 'back') return false;
     // from front: only to back or to approach
     if (toTrap && toTrap.trap === t && toTrap.part === 'back') return t.occupiedBy === null;
-    return eq(to, trapApproach(t));
+    return !toTrap && eq(to, trapApproach(t));
   }
 
   if (toTrap) {

@@ -3,7 +3,7 @@
 
 import { add, eq, inBounds } from './grid';
 import type { ActionResult, Cell, Dir, GameEvent, GameState, Trap } from './types';
-import { catAt, catsInsideTrap, featureAt, gateAt, isEmptyGround, isSolidFeature, noiseAt, trapAt } from './world';
+import { catAt, catsInsideTrap, featureAt, gateAt, isEmptyGround, isSolidFeature, noiseAt, trapAt, trapApproach } from './world';
 
 function approachOk(s: GameState, c: Cell, ignore?: Trap): string | null {
   if (!inBounds(c, s.width, s.height)) return 'Вход ловушки смотрит за край двора';
@@ -15,6 +15,11 @@ function approachOk(s: GameState, c: Cell, ignore?: Trap): string | null {
   return null;
 }
 
+/** Would a trap body on these cells wall off another trap's entrance? */
+function blocksOtherEntrance(s: GameState, cells: Cell[], ignore?: Trap): boolean {
+  return s.traps.some((t) => t !== ignore && cells.some((c) => eq(c, trapApproach(t))));
+}
+
 export function validatePlaceTrap(s: GameState, back: Cell, dir: Dir): ActionResult {
   if (s.inventory.trap <= 0) return { ok: false, reason: 'Ловушки закончились' };
   const front = add(back, dir);
@@ -23,6 +28,7 @@ export function validatePlaceTrap(s: GameState, back: Cell, dir: Dir): ActionRes
     if (catAt(s, c)) return { ok: false, reason: 'Нельзя ставить ловушку на кошку — она испугается' };
     if (!isEmptyGround(s, c)) return { ok: false, reason: 'Ловушке нужны две свободные клетки' };
   }
+  if (blocksOtherEntrance(s, [back, front])) return { ok: false, reason: 'Так ловушка загородит вход другой ловушки' };
   const why = approachOk(s, add(back, dir, 2));
   if (why) return { ok: false, reason: why };
   return { ok: true };
@@ -50,6 +56,7 @@ export function validateRotateTrap(s: GameState, trapId: string, dir: Dir): Acti
     if (catAt(s, front)) return { ok: false, reason: 'Мешает кошка' };
     if (!isEmptyGround(s, front)) return { ok: false, reason: 'Для разворота нужна свободная клетка' };
   }
+  if (blocksOtherEntrance(s, [front], t)) return { ok: false, reason: 'Так ловушка загородит вход другой ловушки' };
   const why = approachOk(s, add(t.back, dir, 2), t);
   if (why) return { ok: false, reason: why };
   return { ok: true };
