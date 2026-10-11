@@ -1,0 +1,119 @@
+{
+  "id": "l6",
+  "order": 6,
+  "title": "Закрытая калитка",
+  "subtitle": "Калитка на пружине",
+  "location": "garden",
+  "description": "Ириска гуляет по саду за забором. Калитка на тугой пружине — открытая, она сама захлопнется через три хода.",
+  "map": [
+    "TFFFFSSS",
+    "F*.*F,,S",
+    "F...F...",
+    "F*..F...",
+    "F...G...",
+    "F..*F...",
+    "F...F...",
+    "TB..F,,,"
+  ],
+  "cats": [
+    {
+      "id": "iriska",
+      "name": "Ириска",
+      "pos": [
+        2,
+        1
+      ],
+      "traits": {
+        "hunger": 2,
+        "fear": 1,
+        "curiosity": 2,
+        "trust": 1
+      },
+      "preferredFood": "tuna",
+      "patrol": [
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          6
+        ]
+      ],
+      "look": {
+        "pattern": "siamese",
+        "base": "#F1E2C8",
+        "accent": "#FFF8EC",
+        "stripe": "#6B4B3A",
+        "eyes": "#6CA6E0"
+      },
+      "personality": "Голубоглазая гуляка",
+      "bio": "Ириска часами гуляла по чужому саду между грядками, будто это её личные владения. В приюте она выбрала место у окна с видом на клумбу."
+    }
+  ],
+  "traps": [
+    {
+      "id": "trapA",
+      "pos": [
+        7,
+        4
+      ],
+      "dir": "W",
+      "rotatable": false
+    }
+  ],
+  "gates": [
+    {
+      "id": "gate",
+      "pos": [
+        4,
+        4
+      ],
+      "autoClose": 3
+    }
+  ],
+  "inventory": {
+    "tuna": 1
+  },
+  "stars": {
+    "twoStarTurns": 12,
+    "threeStarTurns": 8,
+    "threeStarItems": 1
+  },
+  "hints": [
+    {
+      "when": "start",
+      "text": "Ириска учует тунец, только если проход открыт. Калитка откроется на 3 хода и захлопнется сама."
+    },
+    {
+      "when": "tool:hand",
+      "text": "Наведите на калитку: если Ириска заметит приманку, вы увидите её будущий маршрут."
+    },
+    {
+      "when": "gateClosed",
+      "text": "Калитка захлопнулась. Откройте её, когда Ириска будет совсем рядом — или отмените ход."
+    }
+  ],
+  "solution": [
+    {
+      "type": "placeFood",
+      "kind": "tuna",
+      "cell": [
+        7,
+        4
+      ]
+    },
+    {
+      "type": "wait",
+      "times": 2
+    },
+    {
+      "type": "interact",
+      "objectId": "gate"
+    },
+    {
+      "type": "wait",
+      "times": 8
+    }
+  ]
+}
