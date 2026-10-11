@@ -70,7 +70,7 @@
         4,
         0
       ],
-      "radius": 2,
+      "radius": 3,
       "interactive": true
     }
   ],
@@ -78,14 +78,14 @@
     "kibble": 1
   },
   "stars": {
-    "twoStarTurns": 18,
+    "twoStarTurns": 17,
     "threeStarTurns": 13,
     "threeStarItems": 1
   },
   "hints": [
     {
       "when": "start",
-      "text": "Колокольчики пугают кошку, только если она в зоне звона — не дальше 2 клеток от них."
+      "text": "Колокольчики пугают кошку в зоне звона — не дальше 3 клеток от них. Кто дальше, просто обходит шум стороной."
     },
     {
       "when": "tool:hand",
@@ -149,7 +149,8 @@
       ]
     },
     {
-      "type": "wait"
+      "type": "wait",
+      "times": 3
     },
     {
       "type": "interact",
@@ -157,7 +158,7 @@
     },
     {
       "type": "wait",
-      "times": 10
+      "times": 6
     }
   ]
 }

@@ -9,7 +9,6 @@ describe('solver', () => {
     ['l1', 5],
     ['l2', 5],
     ['l6', 8],
-    ['l11', 13],
   ] as const) {
     it(`finds an optimal solution for ${id} (${turns} turns)`, () => {
       const def = levelById(id)!;

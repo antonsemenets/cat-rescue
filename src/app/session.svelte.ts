@@ -301,18 +301,35 @@ export class GameSession {
     return n ? n.id : null;
   }
 
+  /**
+   * The hand tool forgives near misses: a cat standing in front of the chimes or
+   * a gate covers its picture, so a tap on a neighbouring cell counts too
+   * (when only one interactive thing is that close).
+   */
+  snapToInteractive(cell: Cell): Cell {
+    if (this.interactiveAt(cell)) return cell;
+    const near = [...this.state.gates.map((g) => g.cell), ...this.state.noises.filter((n) => n.interactive).map((n) => n.cell)].filter(
+      (c) => Math.abs(c.x - cell.x) <= 1 && Math.abs(c.y - cell.y) <= 1,
+    );
+    return near.length === 1 ? near[0] : cell;
+  }
+
   interactLabel(id: string): string {
     const g = this.state.gates.find((x) => x.id === id);
     const w = gateWords(this.def.location);
     if (g) return g.open ? `Закрыть ${w.acc}` : g.autoClose ? `Открыть ${w.acc} (${w.slams} через ${turnsWord(g.autoClose)})` : `Открыть ${w.acc}`;
     const n = this.state.noises.find((x) => x.id === id);
-    return `${NOISE_ACTION[n?.kind ?? ''] ?? 'Включить'} · ${NOISE_SOUND[n?.kind ?? ''] ?? 'шумит'} ${turnsWord(n?.manualDuration ?? 2)}`;
+    if (!n) return 'Включить';
+    const scared = this.state.cats.filter((c) => c.mode !== 'trapped' && c.fear >= 1 && manhattan(c.pos, n.cell) <= n.radius);
+    const who = scared.length ? `${scared.map((c) => c.name).join(' и ')} ${scared.length > 1 ? 'испугаются' : 'испугается'}` : 'до кошек не достанет, они просто обойдут шум';
+    return `${NOISE_ACTION[n.kind] ?? 'Включить'} (${NOISE_SOUND[n.kind] ?? 'шумит'} ${turnsWord(n.manualDuration)}): ${who}`;
   }
 
   // ---------------------------------------------------------------------------
   // pointer input from the board
 
   onHover(cell: Cell | null) {
+    if (cell && this.tool === 'hand') cell = this.snapToInteractive(cell);
     this.hover = cell;
     if (cell && this.tool) {
       const r = this.actionFor(cell);
@@ -331,6 +348,7 @@ export class GameSession {
       this.selectAt(cell, catId);
       return;
     }
+    if (this.tool === 'hand') cell = this.snapToInteractive(cell);
 
     if (this.tool === 'trap' && !(this.pendingTrap && (eq(cell, this.pendingTrap) || manhattan(cell, this.pendingTrap) === 1))) {
       const dirs = validTrapDirs(s, cell);
@@ -619,6 +637,9 @@ export class GameSession {
       }
       case 'hand':
         o.validCells = [...s.gates.map((g) => g.cell), ...s.noises.filter((n) => n.interactive).map((n) => n.cell)];
+        // where the chimes would be heard: you see at a glance who is in range
+        for (const n of s.noises.filter((x) => x.interactive && !x.active))
+          o.zones.push({ cells: cells.filter((c) => manhattan(c, n.cell) <= n.radius), color: 0xff8a5c, alpha: 0.28 });
         break;
     }
     if (this.hover && this.tool) {

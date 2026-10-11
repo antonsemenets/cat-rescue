@@ -1532,6 +1532,15 @@ export class BoardScene extends Phaser.Scene {
     return { x, y };
   }
 
+  /** Cell of an interactive noise maker whose picture is under the pointer. */
+  private noiseAtPoint(wx: number, wy: number): Cell | null {
+    for (const v of this.noises.values()) {
+      if (!this.state.noises.some((n) => n.id === v.id && n.interactive)) continue;
+      if (v.img.getBounds().contains(wx, wy)) return { ...v.cell };
+    }
+    return null;
+  }
+
   private catAtPoint(wx: number, wy: number): string | null {
     let best: { id: string; depth: number } | null = null;
     for (const v of this.cats.values()) {
@@ -1601,7 +1610,8 @@ export class BoardScene extends Phaser.Scene {
     if (p.rightButtonReleased?.()) return;
     const catId = this.catAtPoint(p.worldX, p.worldY);
     const cat = catId ? this.state.cats.find((c) => c.id === catId) : null;
-    const cell = cat ? cat.pos : this.cellAt(p.worldX, p.worldY);
+    // the top of a tall noise maker may stick out past the board edge: still a tap on it
+    const cell = cat ? cat.pos : (this.cellAt(p.worldX, p.worldY) ?? this.noiseAtPoint(p.worldX, p.worldY));
     if (cell) {
       // touch devices have no hover: report the cell first so previews update
       this.lastHover = key(cell);
