@@ -74,7 +74,7 @@
       radial-gradient(circle at 15% 0%, #e2f0dc 0, transparent 40%),
       radial-gradient(circle at 90% 10%, #fde3c6 0, transparent 40%),
       var(--cream);
-    padding: calc(16px + var(--safe-top)) 16px calc(24px + var(--safe-bottom));
+    padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(16px + var(--safe-left));
   }
   header {
     display: flex;
@@ -236,6 +236,42 @@
     .loc {
       font-size: 11px;
       padding: 3px 8px;
+    }
+  }
+  @media (max-height: 500px) and (orientation: landscape) {
+    .screen {
+      padding-top: calc(10px + var(--safe-top));
+    }
+    header {
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 22px;
+    }
+    .grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .lvl {
+      padding: 10px 12px;
+      min-height: 0;
+      gap: 5px;
+    }
+    h2 {
+      font-size: 15.5px;
+    }
+    p {
+      font-size: 12px;
+    }
+    .num {
+      width: 30px;
+      height: 30px;
+      font-size: 15px;
+      border-radius: 11px;
+    }
+    .cats :global(.portrait) {
+      width: 32px !important;
+      height: 32px !important;
     }
   }
 </style>

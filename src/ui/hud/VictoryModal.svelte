@@ -9,6 +9,7 @@
   import Icon from '../Icon.svelte';
   import Modal from '../Modal.svelte';
   import { SPRITES } from '../../art/sprites';
+  import { viewport } from '../../app/viewport.svelte';
 
   let { session, onnext, onshelter }: { session: GameSession; onnext: () => void; onshelter: () => void } = $props();
   const r = $derived(session.result!);
@@ -32,7 +33,7 @@
   {/each}
 </div>
 
-<Modal label="Уровень пройден" width={460} dismissable={false}>
+<Modal label="Уровень пройден" width={viewport.compact ? 760 : 460} dismissable={false}>
   <div class="win">
     <div class="ribbon">{titles[r.stars]}</div>
     <div class="stars">
@@ -263,5 +264,76 @@
     gap: 8px;
     justify-content: center;
     flex-wrap: wrap;
+  }
+  /* phone held sideways: celebration on the left, numbers and buttons on the right */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .win {
+      grid-template-columns: 1fr 1.1fr;
+      grid-template-areas:
+        'ribbon stats'
+        'stars  stats'
+        'sasha  btns'
+        'cats   btns';
+      align-items: center;
+      gap: 6px 20px;
+    }
+    .ribbon {
+      grid-area: ribbon;
+      font-size: 22px;
+      padding: 4px 22px;
+    }
+    .stars {
+      grid-area: stars;
+      transform: scale(0.72);
+      margin: -10px 0;
+    }
+    .sasha-says {
+      grid-area: sasha;
+    }
+    .sasha-says img {
+      width: 40px;
+      height: 40px;
+    }
+    .sasha-says p {
+      font-size: 13px;
+      padding: 7px 10px;
+    }
+    .cats {
+      grid-area: cats;
+    }
+    .cat :global(svg) {
+      width: 62px;
+      height: 62px;
+    }
+    .name {
+      font-size: 12px;
+      margin-top: -4px;
+    }
+    .stats {
+      grid-area: stats;
+      align-self: end;
+      gap: 5px;
+    }
+    .stats li {
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+    .note {
+      display: none;
+    }
+    .btns {
+      grid-area: btns;
+      align-self: start;
+      gap: 8px;
+    }
+    .btns > .btn {
+      min-height: 46px;
+      font-size: 17px;
+    }
+    .row :global(.btn.small) {
+      min-height: 36px;
+      padding: 0 12px;
+      font-size: 13.5px;
+    }
   }
 </style>

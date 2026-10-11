@@ -913,21 +913,67 @@
     bottom: -3vh;
   }
 
-  @media (max-height: 560px) and (orientation: landscape) {
+  /* phone held sideways: compact menu — big "play", then three small buttons in a row */
+  @media (max-height: 500px) and (orientation: landscape) {
     .panel {
-      gap: 8px;
+      left: calc(4vw + var(--safe-left));
+      width: min(380px, 42vw);
+      gap: 10px;
     }
-    .paw {
-      display: none;
-    }
-    .buttons .btn {
-      min-height: 44px;
-    }
-    .buttons .big {
-      min-height: 50px;
-    }
+    .paw,
     .tag {
       display: none;
+    }
+    h1 {
+      font-size: clamp(36px, 11vh, 52px);
+    }
+    .buttons {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .buttons .btn {
+      min-height: 54px;
+      padding: 4px 6px;
+      font-size: 13.5px;
+      flex-direction: column;
+      gap: 2px;
+      border-radius: 18px;
+    }
+    .buttons .big {
+      grid-column: 1 / -1;
+      min-height: 50px;
+      font-size: 19px;
+      flex-direction: row;
+      gap: 8px;
+      border-radius: 999px;
+    }
+    .badge {
+      top: -6px;
+      right: -4px;
+      min-width: 22px;
+      height: 22px;
+      font-size: 12px;
+    }
+    .stats {
+      flex-wrap: nowrap;
+      gap: 6px;
+    }
+    .stat {
+      font-size: 13.5px;
+      padding: 6px 12px;
+      white-space: nowrap;
+    }
+    .sasha {
+      left: 40vw;
+      width: min(92vh * 1.04, 44vw);
+    }
+    .kitten.grey {
+      left: 37vw;
+      height: 34vh;
+    }
+    .kitten.orange {
+      right: calc(3vw + var(--safe-right));
+      height: 36vh;
     }
   }
 </style>

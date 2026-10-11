@@ -2,11 +2,12 @@
   import { app } from '../../app/store.svelte';
   import Icon from '../Icon.svelte';
   import Modal from '../Modal.svelte';
+  import { viewport } from '../../app/viewport.svelte';
 
   let { onclose, onrestart }: { onclose: () => void; onrestart: () => void } = $props();
 </script>
 
-<Modal {onclose} label="Пауза" width={340}>
+<Modal {onclose} label="Пауза" width={viewport.compact ? 560 : 340}>
   <div class="pause">
     <h2>Пауза</h2>
     <button class="btn primary" onclick={onclose}><Icon name="play" /> Продолжить</button>
@@ -38,5 +39,26 @@
     font-size: 12.5px;
     font-weight: 700;
     color: var(--ink-faint);
+  }
+  @media (max-height: 500px) and (orientation: landscape) {
+    .pause {
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    h2,
+    .keys {
+      grid-column: 1 / -1;
+    }
+    h2 {
+      font-size: 22px;
+      margin-bottom: 0;
+    }
+    .pause > :global(.btn) {
+      min-height: 44px;
+      font-size: 15.5px;
+    }
+    .pause > :global(.btn.primary) {
+      grid-column: 1 / -1;
+    }
   }
 </style>

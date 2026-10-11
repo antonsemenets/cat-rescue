@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { fly, scale } from 'svelte/transition';
   import { backOut } from 'svelte/easing';
   import { catSvg, type CatPose } from '../art/cats';
@@ -11,27 +11,29 @@
   import Icon from './Icon.svelte';
 
   interface Slot {
-    x: number; // % of stage width (cat centre)
-    y: number; // % of stage height (cat feet)
+    x: string; // CSS left of the cat centre (% of room width, offsets in cqh)
+    y: number; // % of room height (cat feet)
     size: number; // in cqh
     pose: CatPose;
     flip?: boolean;
     spot: 'bed' | 'rug' | 'cushion' | 'tree' | 'sill' | 'basket' | 'floor';
   }
 
-  // where rescued cats settle, in order of arrival
+  // where rescued cats settle, in order of arrival. Furniture is placed by its
+  // centre in % of the room width and sized by the room height (cqh), so the
+  // room can stretch sideways to fill any screen without breaking the layout.
   const SLOTS: Slot[] = [
-    { x: 23, y: 84, size: 20, pose: 'sleep', spot: 'bed' },
-    { x: 50, y: 80, size: 21, pose: 'play', spot: 'rug' },
-    { x: 82, y: 34.8, size: 17, pose: 'sit', spot: 'tree', flip: true },
-    { x: 14, y: 39.6, size: 16, pose: 'groom', spot: 'sill' },
-    { x: 64, y: 88, size: 20, pose: 'sleep', spot: 'basket', flip: true },
-    { x: 37, y: 66, size: 18, pose: 'sit', spot: 'cushion' },
-    { x: 82, y: 65.4, size: 17, pose: 'curious', spot: 'tree' },
-    { x: 92, y: 86, size: 19, pose: 'sit', spot: 'floor', flip: true },
-    { x: 7, y: 90, size: 19, pose: 'curious', spot: 'floor' },
-    { x: 44, y: 95, size: 19, pose: 'groom', spot: 'floor', flip: true },
-    { x: 26, y: 39.6, size: 15, pose: 'sleep', spot: 'sill', flip: true },
+    { x: '23%', y: 84, size: 20, pose: 'sleep', spot: 'bed' },
+    { x: '50%', y: 80, size: 21, pose: 'play', spot: 'rug' },
+    { x: '82%', y: 34.8, size: 17, pose: 'sit', spot: 'tree', flip: true },
+    { x: 'calc(19.5% - 9cqh)', y: 39.6, size: 16, pose: 'groom', spot: 'sill' },
+    { x: '64%', y: 88, size: 20, pose: 'sleep', spot: 'basket', flip: true },
+    { x: '37%', y: 66, size: 18, pose: 'sit', spot: 'cushion' },
+    { x: '82%', y: 65.4, size: 17, pose: 'curious', spot: 'tree' },
+    { x: '92%', y: 86, size: 19, pose: 'sit', spot: 'floor', flip: true },
+    { x: '7%', y: 90, size: 19, pose: 'curious', spot: 'floor' },
+    { x: '44%', y: 95, size: 19, pose: 'groom', spot: 'floor', flip: true },
+    { x: 'calc(19.5% + 9cqh)', y: 39.6, size: 15, pose: 'sleep', spot: 'sill', flip: true },
   ];
 
   const allCats: (CatDef & { levelTitle: string })[] = LEVELS.flatMap((l) => l.cats.map((c) => ({ ...c, levelTitle: l.title })));
@@ -44,9 +46,16 @@
 
   let selected = $state<string | null>(null);
   let happy = $state<Record<string, number>>({});
-  let hearts = $state<{ id: number; x: number; y: number }[]>([]);
+  let hearts = $state<{ id: number; x: string; y: number }[]>([]);
   let heartId = 0;
   const sel = $derived(selected ? rescued.find((c) => c.id === selected) : undefined);
+
+  let wrapEl: HTMLDivElement;
+  onMount(async () => {
+    // a room wider than the screen opens at its middle, where most cats are
+    await tick();
+    if (wrapEl) wrapEl.scrollLeft = (wrapEl.scrollWidth - wrapEl.clientWidth) / 2;
+  });
 
   onDestroy(() => {
     app.freshCats = [];
@@ -68,7 +77,7 @@
       }
     }, 1200);
     for (let i = 0; i < 4; i++) {
-      const h = { id: ++heartId, x: slot.x + (i - 1.5) * 2.2, y: slot.y - slot.size * 0.9 };
+      const h = { id: ++heartId, x: `calc(${slot.x} + ${((i - 1.5) * 3.4).toFixed(1)}cqh)`, y: slot.y - slot.size * 0.9 };
       hearts = [...hearts, h];
       setTimeout(() => (hearts = hearts.filter((q) => q.id !== h.id)), 1300);
     }
@@ -90,7 +99,7 @@
     <button class="btn small primary" onclick={() => app.go('levels')}><Icon name="paw" size={18} /> Спасать</button>
   </header>
 
-  <div class="room-wrap">
+  <div class="room-wrap" bind:this={wrapEl}>
     <div class="stage">
       <!-- wall & floor -->
       <div class="wall"></div>
@@ -174,7 +183,7 @@
           class="cat pose-{pose}"
           class:sel={selected === cat.id}
           class:flip={slot.flip}
-          style:left="{slot.x}%"
+          style:left={slot.x}
           style:top="{slot.y}%"
           style:--size="{slot.size}cqh"
           style:--delay="{-i * 0.7}s"
@@ -189,7 +198,7 @@
       {/each}
 
       {#each hearts as h (h.id)}
-        <span class="heart" style:left="{h.x}%" style:top="{h.y}%"><Icon name="heart" size={26} /></span>
+        <span class="heart" style:left={h.x} style:top="{h.y}%"><Icon name="heart" size={26} /></span>
       {/each}
 
       {#if rescued.length === 0}
@@ -243,7 +252,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: calc(12px + var(--safe-top)) 14px 12px;
+    padding: calc(12px + var(--safe-top)) calc(14px + var(--safe-right)) 12px calc(14px + var(--safe-left));
     background: var(--cream-2);
     box-shadow: 0 2px 0 var(--line);
     z-index: 3;
@@ -263,18 +272,20 @@
   }
   .room-wrap {
     flex: 1;
+    min-height: 0;
     overflow-x: auto;
     overflow-y: hidden;
     position: relative;
     scrollbar-width: thin;
-    /* wall and floor continue beyond the fixed-ratio stage on wide screens */
-    background: linear-gradient(180deg, #f8e2c6 0, #f6dcbd 61%, #fff4e4 61%, #fff4e4 62.5%, #d9a979 62.5%, #c99366 100%);
+    overscroll-behavior-x: contain;
+    container-type: size;
   }
+  /* the room always fills the width; narrow screens get a wider-than-screen
+     room that scrolls sideways instead of empty margins */
   .stage {
     position: relative;
     height: 100%;
-    aspect-ratio: 1200 / 760;
-    margin: 0 auto;
+    width: max(100%, 158cqh);
     container-type: size;
     overflow: hidden;
   }
@@ -306,56 +317,68 @@
   }
   svg {
     position: absolute;
+    translate: -50% 0;
+    width: auto;
   }
   .window {
-    left: 7%;
+    left: 19.5%;
     top: 9%;
-    width: 25%;
+    height: 34.2cqh;
+    aspect-ratio: 300 / 260;
   }
   .frame {
-    left: 40%;
+    left: 44.5%;
     top: 14%;
-    width: 9%;
+    height: 11.8cqh;
+    aspect-ratio: 120 / 100;
   }
   .shelf {
-    left: 52%;
+    left: 62%;
     top: 22%;
-    width: 20%;
+    height: 14.6cqh;
+    aspect-ratio: 260 / 120;
   }
   .tree {
-    left: 74%;
+    left: 82%;
     top: 22%;
-    height: 66%;
+    height: 66cqh;
+    aspect-ratio: 200 / 520;
   }
   .rug {
-    left: 32%;
+    left: 50%;
     top: 70%;
-    width: 36%;
+    height: 17cqh;
+    aspect-ratio: 400 / 120;
   }
   .bed.b1 {
-    left: 12%;
+    left: 23%;
     top: 75%;
-    width: 22%;
+    height: 15.9cqh;
+    aspect-ratio: 240 / 110;
   }
   .bed.basket {
-    left: 53.5%;
+    left: 64%;
     top: 79%;
-    width: 21%;
+    height: 16.6cqh;
+    aspect-ratio: 240 / 120;
   }
   .bed.cushion {
-    left: 29%;
+    left: 37%;
     top: 61%;
-    width: 16%;
+    height: 10.1cqh;
+    aspect-ratio: 200 / 80;
   }
   .bowls {
-    left: 86%;
+    left: 92.5%;
     top: 92%;
-    width: 13%;
+    height: 6.8cqh;
+    aspect-ratio: 180 / 60;
   }
   .yarn {
-    left: 60%;
+    left: 62.5%;
     top: 70%;
-    width: 5%;
+    height: 5.9cqh;
+    aspect-ratio: 80 / 60;
   }
   .cat {
     position: absolute;
@@ -642,6 +665,66 @@
       left: 10px;
       right: 10px;
       width: auto;
+    }
+  }
+  /* phone held sideways: the header floats over the room so the room gets the full height */
+  @media (max-height: 500px) and (orientation: landscape) {
+    header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: none;
+      box-shadow: none;
+      padding-top: calc(8px + var(--safe-top));
+      padding-bottom: 0;
+      pointer-events: none;
+    }
+    header > * {
+      pointer-events: auto;
+    }
+    .ttl {
+      flex: 0 1 auto;
+      background: rgba(255, 250, 243, 0.9);
+      padding: 4px 12px;
+      border-radius: 14px;
+      box-shadow: var(--shadow-sm);
+      margin-right: auto;
+    }
+    h1 {
+      font-size: 15px;
+    }
+    .ttl p {
+      font-size: 12px;
+    }
+    header :global(.icon-btn) {
+      width: 40px;
+      height: 40px;
+    }
+    .card-sheet {
+      left: auto;
+      right: calc(10px + var(--safe-right));
+      bottom: 10px;
+      top: calc(56px + var(--safe-top));
+      width: min(340px, 46vw);
+      overflow-y: auto;
+      padding: 12px 14px;
+      gap: 8px;
+    }
+    .card-sheet h2 {
+      font-size: 19px;
+    }
+    .mini {
+      width: 64px;
+      height: 64px;
+    }
+    .mini :global(svg) {
+      width: 78px;
+      height: 78px;
+    }
+    .bio {
+      font-size: 13px;
+      line-height: 1.35;
     }
   }
 </style>

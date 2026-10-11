@@ -14,6 +14,7 @@
   import VictoryModal from './hud/VictoryModal.svelte';
   import SashaDialog from './SashaDialog.svelte';
   import { SPRITES, preloadSprites } from '../art/sprites';
+  import { viewport } from '../app/viewport.svelte';
 
   preloadSprites(['sasha-wave', 'sasha-hold', 'sasha-hug', 'sasha-pet', 'sasha-face']);
 
@@ -23,6 +24,9 @@
   let view: BoardView | null = null;
   let topH = $state(0);
   let botH = $state(0);
+  let tbW = $state(0);
+  // phone held sideways: tools move to a right-hand column, the board gets the height
+  const compact = $derived(viewport.compact);
   let paused = $state(false);
   let dismissedProgress = $state<string | null>(null);
 
@@ -59,9 +63,8 @@
   });
 
   $effect(() => {
-    const top = topH;
-    const bottom = botH + 16;
-    view?.setInsets({ top: top + 4, bottom, left: 0, right: 0 });
+    if (compact) view?.setInsets({ top: topH + 4, bottom: 8, left: 52, right: tbW + 14 });
+    else view?.setInsets({ top: topH + 4, bottom: botH + 16, left: 0, right: 0 });
   });
 
   function onkey(e: KeyboardEvent) {
@@ -105,7 +108,7 @@
 
 <svelte:window onkeydown={onkey} />
 
-<div class="game" class:tool-active={!!session.tool}>
+<div class="game" class:tool-active={!!session.tool} class:compact style:--top="{topH}px" style:--bot="{botH}px" style:--tbw="{tbW}px">
   <div class="bg" aria-hidden="true">
     <span class="cloud c1"></span>
     <span class="cloud c2"></span>
@@ -119,14 +122,15 @@
     <SashaDialog
       lines={def.intro}
       title="Уровень {def.order} · {def.title}"
-      bottomOffset={botH + 12}
+      bottomOffset={compact ? 8 : botH + 12}
+      rightOffset={compact ? tbW + 14 : 0}
       onfocus={(f) => session.setFocus(f)}
       onclose={() => session.closeBriefing()}
     />
   {/if}
 
   {#if session.hint && !session.replaying && !session.briefing}
-    <div class="hint card" transition:fly={{ y: -10, duration: 220 }} style:top="{topH + 4}px">
+    <div class="hint card" transition:fly={{ y: -10, duration: 220 }}>
       <img class="hint-ava" src={SPRITES['sasha-face']} alt="Саша" />
       <p>{session.hint}</p>
       <button class="hint-x" onclick={() => session.dismissHint()} aria-label="Скрыть подсказку"><Icon name="close" size={16} /></button>
@@ -134,7 +138,7 @@
   {/if}
 
   {#if progressMsg && dismissedProgress !== session.progress + ':' + session.state.turn && !session.showVictory}
-    <div class="banner card" transition:fly={{ y: -10, duration: 220 }} style:top="{topH + 4}px">
+    <div class="banner card" transition:fly={{ y: -10, duration: 220 }}>
       <p>{progressMsg}</p>
       <div class="banner-btns">
         <button class="btn small" onclick={() => session.undo()}><Icon name="undo" size={18} /> Отменить</button>
@@ -147,7 +151,7 @@
   {/if}
 
   {#if session.replaying}
-    <div class="replay card" transition:fade style:top="{topH + 4}px">
+    <div class="replay card" transition:fade>
       <Icon name="film" size={20} /> Повтор решения
       <button class="btn small" onclick={() => session.stopReplay()}>Пропустить</button>
     </div>
@@ -156,27 +160,27 @@
   <InfoPanel {session} />
 
   {#if session.hoverText && session.tool}
-    <div class="hover-tip" style:bottom="{botH + 22}px" transition:fade={{ duration: 120 }}>{session.hoverText}</div>
+    <div class="hover-tip" transition:fade={{ duration: 120 }}>{session.hoverText}</div>
   {:else if session.tool && !session.hoverText}
-    <div class="hover-tip soft" style:bottom="{botH + 22}px" transition:fade={{ duration: 120 }}>
+    <div class="hover-tip soft" transition:fade={{ duration: 120 }}>
       {session.pendingTrap ? 'Теперь выберите сторону входа' : session.pendingRotate ? 'Куда развернуть вход?' : 'Выберите клетку на поле · Esc — отмена'}
     </div>
   {/if}
 
   {#if session.toast}
     {#key session.toast.id}
-      <div class="toast" class:info={session.toast.kind === 'info'} in:fly={{ y: 10, duration: 200 }} out:fade={{ duration: 200 }} style:bottom="{botH + 64}px" role="status">
+      <div class="toast" class:info={session.toast.kind === 'info'} in:fly={{ y: 10, duration: 200 }} out:fade={{ duration: 200 }} role="status">
         {session.toast.text}
       </div>
     {/key}
   {/if}
 
-  <div class="zoom" style:bottom="{botH + 24}px">
+  <div class="zoom">
     <button class="icon-btn" onclick={() => view?.zoomBy(1.25)} aria-label="Приблизить"><Icon name="zoomIn" size={22} /></button>
     <button class="icon-btn" onclick={() => view?.zoomBy(1 / 1.25)} aria-label="Отдалить"><Icon name="zoomOut" size={22} /></button>
   </div>
 
-  <Toolbar {session} bind:height={botH} />
+  <Toolbar {session} bind:height={botH} bind:width={tbW} />
 
   {#if session.loading}
     <div class="loading" out:fade={{ duration: 300 }}>
@@ -274,6 +278,7 @@
     border-radius: 18px;
     max-width: min(560px, calc(100vw - 24px));
     width: max-content;
+    top: calc(var(--top) + 4px);
   }
   .hint p,
   .banner p {
@@ -336,6 +341,7 @@
     max-width: calc(100vw - 24px);
     text-align: center;
     pointer-events: none;
+    bottom: calc(var(--bot) + 22px);
   }
   .hover-tip.soft {
     background: rgba(76, 59, 58, 0.6);
@@ -354,6 +360,7 @@
     border: 2px solid var(--rose-soft);
     max-width: calc(100vw - 24px);
     text-align: center;
+    bottom: calc(var(--bot) + 64px);
   }
   .toast.info {
     color: var(--mint-dark);
@@ -361,7 +368,8 @@
   }
   .zoom {
     position: absolute;
-    right: 12px;
+    right: calc(12px + var(--safe-right));
+    bottom: calc(var(--bot) + 24px);
     z-index: 9;
     display: grid;
     gap: 8px;
@@ -405,5 +413,60 @@
     .banner p {
       font-size: 14px;
     }
+  }
+
+  /* ---- phone held sideways: tools on the right, everything slimmer ---- */
+  .compact .hint,
+  .compact .banner,
+  .compact .replay {
+    left: calc(60px + var(--safe-left));
+    right: calc(var(--tbw) + 22px + var(--safe-right));
+    margin-inline: auto;
+    transform: none;
+    width: fit-content;
+    max-width: none;
+    padding: 6px 8px;
+    gap: 8px;
+    border-radius: 16px;
+  }
+  .compact .hint p,
+  .compact .banner p {
+    font-size: 13.5px;
+    line-height: 1.25;
+  }
+  .compact .hint-ava {
+    width: 32px;
+    height: 32px;
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 4px var(--orange);
+  }
+  .compact .banner :global(.btn.small) {
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  .compact .hover-tip,
+  .compact .toast {
+    left: calc((100% - var(--tbw)) / 2);
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+  .compact .hover-tip {
+    bottom: 10px;
+  }
+  .compact .toast {
+    bottom: 46px;
+  }
+  .compact .zoom {
+    left: calc(8px + var(--safe-left));
+    right: auto;
+    bottom: 10px;
+    gap: 6px;
+  }
+  .compact .zoom :global(.icon-btn) {
+    width: 38px;
+    height: 38px;
+    border-radius: 13px;
   }
 </style>

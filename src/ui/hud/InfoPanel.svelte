@@ -212,4 +212,41 @@
       gap: 2px 10px;
     }
   }
+  /* phone held sideways: bottom-left, next to the zoom buttons, scrolls if tall */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .panel {
+      left: calc(56px + var(--safe-left));
+      right: auto;
+      bottom: 8px;
+      width: 260px;
+      max-height: calc(100% - var(--top) - 16px);
+      overflow-y: auto;
+      padding: 10px 12px;
+      gap: 6px;
+      border-radius: 18px;
+    }
+    h3 {
+      font-size: 16px;
+    }
+    .head {
+      gap: 8px;
+    }
+    .head :global(.portrait) {
+      width: 42px !important;
+      height: 42px !important;
+    }
+    .persona {
+      font-size: 12px;
+    }
+    .status {
+      font-size: 12.5px;
+      padding: 5px 8px;
+    }
+    .trait {
+      font-size: 11.5px;
+    }
+    .senses {
+      font-size: 11.5px;
+    }
+  }
 </style>

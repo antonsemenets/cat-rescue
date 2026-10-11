@@ -3,6 +3,7 @@
   import { audio } from '../audio/audio';
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
+  import { viewport } from '../app/viewport.svelte';
 
   let { onclose }: { onclose: () => void } = $props();
   let confirmReset = $state(false);
@@ -14,12 +15,13 @@
   }
 </script>
 
-<Modal {onclose} label="Настройки" width={440}>
+<Modal {onclose} label="Настройки" width={viewport.compact ? 760 : 440}>
   <div class="head">
     <h2>Настройки</h2>
     <button class="icon-btn" onclick={onclose} aria-label="Закрыть"><Icon name="close" /></button>
   </div>
 
+  <div class="cols">
   <section>
     <label class="row">
       <span class="lbl"><Icon name="sound" size={20} /> Звуки</span>
@@ -61,6 +63,8 @@
       <span class="switch" aria-hidden="true"></span>
     </label>
   </section>
+
+  </div>
 
   <section class="danger">
     {#if !confirmReset}
@@ -180,5 +184,30 @@
   .btns {
     display: flex;
     gap: 8px;
+  }
+  @media (max-height: 500px) and (orientation: landscape) {
+    .head {
+      margin-bottom: 4px;
+    }
+    h2 {
+      font-size: 21px;
+    }
+    .cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 22px;
+    }
+    section {
+      padding: 6px 0;
+      gap: 2px;
+    }
+    .row {
+      min-height: 38px;
+      font-size: 14px;
+    }
+    .seg button {
+      min-width: 38px;
+      height: 30px;
+    }
   }
 </style>

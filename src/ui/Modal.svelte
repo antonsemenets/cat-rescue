@@ -69,4 +69,14 @@
     background: var(--paper);
     outline: none;
   }
+  @media (max-height: 500px) and (orientation: landscape) {
+    .backdrop {
+      padding: 8px calc(12px + var(--safe-right)) 8px calc(12px + var(--safe-left));
+    }
+    .sheet {
+      padding: 14px 18px;
+      border-radius: 22px;
+      max-height: calc(100dvh - 16px);
+    }
+  }
 </style>

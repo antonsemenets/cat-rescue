@@ -10,12 +10,14 @@
     lines,
     title,
     bottomOffset = 0,
+    rightOffset = 0,
     onfocus,
     onclose,
   }: {
     lines: IntroLine[];
     title?: string;
     bottomOffset?: number;
+    rightOffset?: number;
     onfocus?: (focus: IntroLine['focus'] | undefined) => void;
     onclose: () => void;
   } = $props();
@@ -109,7 +111,7 @@
 
 <svelte:window onkeydowncapture={onkey} />
 
-<div class="dlg" class:leaving style:--bottom="{bottomOffset}px" role="dialog" aria-modal="true" aria-label="Саша рассказывает">
+<div class="dlg" class:leaving style:--bottom="{bottomOffset}px" style:--right="{rightOffset}px" role="dialog" aria-modal="true" aria-label="Саша рассказывает">
   <button class="shade" onclick={advance} aria-label="Дальше"></button>
 
   {#key poseKey}
@@ -387,6 +389,63 @@
     }
     .next {
       min-width: 0;
+    }
+  }
+
+  /* phone held sideways: Sasha on the left, a slim box between her and the tool column */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .sasha {
+      left: calc(var(--safe-left) - 2vw);
+      height: 96vh;
+      bottom: -8vh;
+    }
+    .sasha.pose-hug {
+      height: 66vh;
+      bottom: -2vh;
+    }
+    .sasha.pose-pet {
+      height: 46vh;
+      bottom: 0;
+    }
+    .box {
+      left: calc(var(--safe-left) + min(34vw, 300px));
+      right: calc(var(--right) + 10px + var(--safe-right));
+      bottom: calc(var(--bottom) + 4px);
+      padding: 20px 18px 10px;
+      border-radius: 22px;
+    }
+    .box::before {
+      top: 30px;
+    }
+    .name {
+      top: -17px;
+      left: 16px;
+      font-size: 14.5px;
+      padding: 3px 12px 3px 3px;
+    }
+    .name img {
+      width: 26px;
+      height: 26px;
+    }
+    .title {
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+    .text {
+      font-size: 15.5px;
+      line-height: 1.38;
+      min-height: 2.76em;
+    }
+    .foot {
+      margin-top: 8px;
+    }
+    .next {
+      min-width: 0;
+      min-height: 36px;
+      font-size: 14px;
+    }
+    .skip {
+      font-size: 13px;
     }
   }
 </style>

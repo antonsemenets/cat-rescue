@@ -69,7 +69,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: calc(10px + var(--safe-top)) 12px 10px;
+    padding: calc(10px + var(--safe-top)) calc(12px + var(--safe-right)) 10px calc(12px + var(--safe-left));
     z-index: 10;
     pointer-events: none;
   }
@@ -233,6 +233,54 @@
     .left,
     .right {
       gap: 6px;
+    }
+  }
+  /* phone held sideways: one slim row */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .top {
+      padding-top: calc(6px + var(--safe-top));
+      padding-bottom: 4px;
+      gap: 8px;
+    }
+    .left,
+    .right {
+      gap: 6px;
+    }
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 13px;
+    }
+    .title {
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+    .lvl {
+      font-size: 10px;
+    }
+    .name {
+      font-size: 14px;
+    }
+    .center {
+      padding: 3px 12px;
+      gap: 10px;
+      border-radius: 14px;
+    }
+    .turn {
+      font-size: 20px;
+      grid-auto-flow: column;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .turn small {
+      font-size: 10px;
+    }
+    .rescued {
+      padding: 2px 6px;
+    }
+    .rescued :global(.portrait) {
+      width: 28px !important;
+      height: 28px !important;
     }
   }
 </style>

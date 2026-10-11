@@ -4,7 +4,7 @@
   import { ITEM_NAMES } from '../../app/text';
   import Icon from '../Icon.svelte';
 
-  let { session, height = $bindable(0) }: { session: GameSession; height?: number } = $props();
+  let { session, height = $bindable(0), width = $bindable(0) }: { session: GameSession; height?: number; width?: number } = $props();
 
   const LABELS: Record<Tool, string> = {
     trap: 'Ловушка',
@@ -19,10 +19,17 @@
   let toolsEl: HTMLDivElement;
   let fadeR = $state(false);
   let fadeL = $state(false);
+  let fadeT = $state(false);
+  let fadeB = $state(false);
+  // hint at more tools beyond the edge: the row scrolls sideways at the bottom,
+  // the side column (phone held sideways) scrolls vertically
   function updateFade() {
     if (!toolsEl) return;
-    fadeL = toolsEl.scrollLeft > 4;
-    fadeR = toolsEl.scrollLeft + toolsEl.clientWidth < toolsEl.scrollWidth - 4;
+    const e = toolsEl;
+    fadeL = e.scrollLeft > 4;
+    fadeR = e.scrollLeft + e.clientWidth < e.scrollWidth - 4;
+    fadeT = e.scrollTop > 4;
+    fadeB = e.scrollTop + e.clientHeight < e.scrollHeight - 4;
   }
   $effect(() => {
     void tools.length;
@@ -33,8 +40,18 @@
   });
 </script>
 
-<div class="toolbar" class:raised={session.briefing} bind:clientHeight={height}>
-  <div class="tools" role="toolbar" aria-label="Инструменты" bind:this={toolsEl} onscroll={updateFade} class:fade-r={fadeR} class:fade-l={fadeL}>
+<div class="toolbar" class:raised={session.briefing} bind:clientHeight={height} bind:clientWidth={width}>
+  <div
+    class="tools"
+    role="toolbar"
+    aria-label="Инструменты"
+    bind:this={toolsEl}
+    onscroll={updateFade}
+    class:fade-r={fadeR}
+    class:fade-l={fadeL}
+    class:fade-t={fadeT}
+    class:fade-b={fadeB}
+  >
     {#each tools as t, i (t)}
       {@const count = session.toolCount(t)}
       {@const off = !!session.toolDisabledReason(t)}
@@ -253,6 +270,86 @@
     }
     .skip {
       min-width: 66px;
+    }
+  }
+
+  /* ---- phone held sideways: a slim two-column panel on the right ---- */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .toolbar {
+      left: auto;
+      right: calc(8px + var(--safe-right));
+      top: calc(var(--top) + 4px);
+      bottom: auto;
+      transform: none;
+      flex-direction: column;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 20px;
+      max-width: none;
+      max-height: calc(100% - var(--top) - 12px);
+    }
+    .tools {
+      display: grid;
+      grid-template-columns: repeat(2, 58px);
+      grid-auto-rows: 56px;
+      gap: 6px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 16px 12px 8px;
+      margin: -16px -12px -8px;
+    }
+    .tools.fade-r,
+    .tools.fade-l,
+    .tools.fade-l.fade-r {
+      mask-image: none;
+    }
+    .tools.fade-b {
+      mask-image: linear-gradient(180deg, #000 82%, transparent);
+    }
+    .tools.fade-t {
+      mask-image: linear-gradient(180deg, transparent, #000 18%);
+    }
+    .tools.fade-t.fade-b {
+      mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+    }
+    .tool {
+      width: 58px;
+      min-width: 58px;
+      height: 56px;
+      border-radius: 14px;
+      padding: 4px 2px 5px;
+    }
+    .art {
+      height: 30px;
+    }
+    .art :global(svg) {
+      width: 38px;
+      height: 30px;
+    }
+    .lbl {
+      font-size: 9.5px;
+    }
+    .count {
+      min-width: 21px;
+      height: 21px;
+      font-size: 12px;
+      padding: 0 5px;
+    }
+    .skip {
+      min-width: 0;
+      width: 100%;
+      min-height: 46px;
+      flex-shrink: 0;
+      grid-auto-flow: column;
+      gap: 6px;
+      font-size: 14px;
+      border-radius: 14px;
+    }
+    .skip :global(svg) {
+      width: 20px;
+      height: 20px;
     }
   }
 </style>
