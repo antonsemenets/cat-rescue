@@ -119,14 +119,32 @@ export function drawWater(g: G, x: number, y: number) {
   g.fillEllipse(c.x + 14, c.y + 6, 16, 4);
 }
 
+/** The island's shadow on the "ground" far below: a blurred copy of its footprint. */
+export function boardShadowSvg(w: number, h: number, slabDepth = 34): { svg: string; x: number; y: number; w: number; h: number } {
+  const drop = slabDepth + 44;
+  const cx = gp(w / 2, h / 2).x;
+  const cy = gp(w / 2, h / 2).y + drop;
+  // slightly smaller than the board so the side corners stay tucked under it
+  const k = 0.9;
+  const pts = [gp(0, 0), gp(w, 0), gp(w, h), gp(0, h)].map((p) => ({ x: cx + (p.x - cx) * k, y: cy + (p.y + drop - cy) * k }));
+  const pad = 90;
+  const minX = Math.min(...pts.map((p) => p.x)) - pad;
+  const minY = Math.min(...pts.map((p) => p.y)) - pad;
+  const vw = Math.ceil(Math.max(...pts.map((p) => p.x)) + pad - minX);
+  const vh = Math.ceil(Math.max(...pts.map((p) => p.y)) + pad - minY);
+  const poly = pts.map((p) => `${(p.x - minX).toFixed(1)},${(p.y - minY).toFixed(1)}`).join(' ');
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vw} ${vh}" width="${vw}" height="${vh}">` +
+    `<defs><filter id="bs" filterUnits="userSpaceOnUse" x="0" y="0" width="${vw}" height="${vh}"><feGaussianBlur stdDeviation="26"/></filter></defs>` +
+    `<polygon points="${poly}" fill="#5a4630" opacity="0.4" filter="url(#bs)"/></svg>`;
+  return { svg, x: minX, y: minY, w: vw, h: vh };
+}
+
 /** The soil slab under the front edges of the board. */
 export function drawSlab(g: G, w: number, h: number, depth = 34) {
   const L0 = gp(0, h);
   const M = gp(w, h);
   const R0 = gp(w, 0);
-  // soft drop shadow
-  g.fillStyle(0x3c3a2a, 0.12);
-  g.fillEllipse((L0.x + R0.x) / 2, M.y + depth + 6, (R0.x - L0.x) * 1.02, 46);
   poly(g, [L0, M, lift(M, -depth), lift(L0, -depth)], PAL.soilL);
   poly(g, [M, R0, lift(R0, -depth), lift(M, -depth)], PAL.soilR);
   // soil layers

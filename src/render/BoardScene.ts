@@ -22,6 +22,7 @@ import {
   drawPathStones,
   drawShed,
   drawSlab,
+  boardShadowSvg,
   drawTrapBack,
   drawTrapFront,
   drawWall,
@@ -278,6 +279,16 @@ export class BoardScene extends Phaser.Scene {
     add('tuft', Props.tuftSvg(), 24, 16);
     add('pebbles', Props.pebblesSvg(), 28, 14);
     await ensureTextures(this, list, this.texScale);
+    // the board shadow is heavily blurred: half resolution is plenty and keeps the texture small
+    const sh = boardShadowSvg(def.map[0].length, def.map.length);
+    this.shadowBox = sh;
+    await ensureTextures(this, [{ key: this.shadowKey(), svg: sh.svg, w: sh.w, h: sh.h }], 0.5);
+  }
+
+  private shadowBox: { x: number; y: number; w: number; h: number } | null = null;
+
+  private shadowKey(): string {
+    return `boardShadow:${this.def.map[0].length}x${this.def.map.length}`;
   }
 
   private img(x: number, y: number, key: string, svgW: number, displayW: number, ox = 0.5, oy = 0.5): Phaser.GameObjects.Image {
@@ -332,6 +343,9 @@ export class BoardScene extends Phaser.Scene {
 
   private buildStatic() {
     const s = this.state;
+    if (this.shadowBox) {
+      this.staticObjs.push(this.add.image(this.shadowBox.x, this.shadowBox.y, this.shadowKey()).setOrigin(0, 0).setScale(2).setDepth(-10001));
+    }
     const g = this.add.graphics().setDepth(-10000);
     this.groundG = g;
     drawSlab(g, s.width, s.height);
