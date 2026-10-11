@@ -82,7 +82,10 @@
     gap: 6px;
     overflow-x: auto;
     scrollbar-width: none;
-    padding: 2px;
+    /* a scroll container clips everything that sticks out: leave room for the
+       count badges, the lifted active tool and Sasha's focus ring */
+    padding: 18px 12px 10px;
+    margin: -18px -12px -10px;
   }
   .tools::-webkit-scrollbar {
     display: none;
@@ -142,30 +145,22 @@
     filter: none;
     animation: focusPulse 1.1s ease-in-out infinite;
   }
-  .tool.focus::after {
-    content: '';
-    position: absolute;
-    inset: -6px;
-    border-radius: 22px;
-    border: 3px solid var(--orange);
-    animation: focusRing 1.1s ease-out infinite;
-  }
+  /* box-shadow only: it never creates extra scroll area, unlike a scaled ring */
   @keyframes focusPulse {
-    50% {
-      transform: translateY(-6px) scale(1.06);
+    0%,
+    100% {
+      transform: translateY(-3px);
       box-shadow:
         0 0 0 3px var(--orange),
-        0 8px 18px rgba(242, 166, 90, 0.45);
+        0 0 0 3px rgba(242, 166, 90, 0.6),
+        0 3px 0 #ead6bd;
     }
-  }
-  @keyframes focusRing {
-    from {
-      opacity: 1;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 0;
-      transform: scale(1.25);
+    50% {
+      transform: translateY(-6px);
+      box-shadow:
+        0 0 0 3px var(--orange),
+        0 0 0 10px rgba(242, 166, 90, 0),
+        0 8px 16px rgba(242, 166, 90, 0.45);
     }
   }
   .art {
