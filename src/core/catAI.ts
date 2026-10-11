@@ -5,13 +5,13 @@
 //   1. escape a threat (noise)            -> frightened, run to a hiding spot
 //   2. stay hidden until calm             -> hiding
 //   3. best of food / toys (utility)      -> interested (or cautious at a trap door)
-//   4. habitual activity (patrol / home)  -> idle
+//   4. habitual activity (follow mum / patrol / home) -> idle
 
-import { compareCells, compareStr, eq, idx, manhattan, DIRS, add } from './grid';
+import { compareCells, compareStr, eq, idx, inBounds, manhattan, DIRS, add } from './grid';
 import { buildCostMap, costTo, pathTo, type CostMap, type StepCost } from './pathfinding';
 import { FOOD_INFO, RULES, foodNoticeRadius, hideDuration, toyNoticeRadius } from './rules';
 import type { Cat, CatActivity, CatMode, Cell, Emote, FoodKind, GameState, Target } from './types';
-import { canStep, computeCover, computeDanger, isHidingSpot, trapAt, trapApproach, catsInsideTrap } from './world';
+import { canStep, computeCover, computeDanger, isHidingSpot, trapAt, trapApproach, trapCells, catsInsideTrap } from './world';
 
 export interface Snapshot {
   s: GameState;
@@ -114,6 +114,8 @@ function evaluateCandidates(snap: Snapshot, cat: Cat, map: CostMap): Candidate[]
 
   if (cat.hunger >= 1) {
     for (const f of foodSpots(s)) {
+      // a picky eater does not even look at anything but its favourite
+      if (cat.picky && f.kind !== cat.preferredFood) continue;
       // once a cat has smelled its target it keeps going for it (no flip-flopping at the radius edge)
       const committed = cat.target?.id === f.id;
       const dist = manhattan(cat.pos, f.cell);
@@ -309,6 +311,8 @@ export function decideCat(snap: Snapshot, cat: Cat): Intent {
   // 4. Habitual activity.
   it.mode = 'idle';
   it.priority = 4;
+  const mum = cat.follows ? s.cats.find((k) => k.id === cat.follows) : undefined;
+  if (mum) return followMum(snap, cat, mum, safe, it);
   if (cat.patrol.length > 0) {
     const n = cat.patrol.length;
     let pi = cat.patrolIndex % n;
@@ -343,6 +347,75 @@ export function decideCat(snap: Snapshot, cat: Cat): Intent {
   it.target = null;
   it.activity = restActivity(s, cat);
   return it;
+}
+
+/** Cells a kitten keeps close to: its mother, or the trap she is sitting in. */
+export function followAnchors(s: GameState, mum: Cat): Cell[] {
+  const trap = mum.trappedIn ? s.traps.find((t) => t.id === mum.trappedIn) : undefined;
+  return trap ? trapCells(trap) : [mum.pos];
+}
+
+/** A kitten stays within the leash of its mother; when too far it walks to the nearest free cell beside her. */
+function followMum(snap: Snapshot, cat: Cat, mum: Cat, safe: CostMap, it: Intent): Intent {
+  const { s } = snap;
+  const anchors = followAnchors(s, mum);
+  it.target = { kind: 'follow', id: mum.id, cell: { ...anchors[0] } };
+  // never block mum: if she is about to walk through the kitten's cell, it steps aside (or trots ahead)
+  if (mum.mode !== 'trapped' && !mum.follows) {
+    const route = decideCat(snap, mum).path.slice(0, 2);
+    if (route.some((c) => eq(c, cat.pos))) {
+      const step = makeWay(snap, cat, mum, route);
+      if (step) {
+        it.path = [step];
+        it.move = step;
+        it.activity = 'walk';
+        it.remaining = 1;
+        return it;
+      }
+    }
+  }
+  if (anchors.some((a) => manhattan(a, cat.pos) <= RULES.followLeash)) {
+    it.activity = restActivity(s, cat);
+    return it;
+  }
+  const taken = (c: Cell) => s.cats.some((k) => k.id !== cat.id && k.mode !== 'trapped' && eq(k.pos, c));
+  let best: { cell: Cell; cost: number } | null = null;
+  for (const a of anchors) {
+    for (const d of DIRS) {
+      const c = add(a, d);
+      if (!inBounds(c, s.width, s.height) || trapAt(s, c) || taken(c)) continue;
+      const cost = costTo(safe, c);
+      if (!Number.isFinite(cost)) continue;
+      if (!best || cost < best.cost || (cost === best.cost && compareCells(c, best.cell) < 0)) best = { cell: c, cost };
+    }
+  }
+  const path = best ? (pathTo(safe, best.cell) ?? []) : [];
+  if (path.length === 0) {
+    it.activity = restActivity(s, cat);
+    return it;
+  }
+  it.path = path;
+  it.move = path[0];
+  it.activity = 'walk';
+  it.remaining = path.length;
+  return it;
+}
+
+/** Where a kitten goes to clear its mother's way: off her route if possible, otherwise further ahead of her. */
+function makeWay(snap: Snapshot, cat: Cat, mum: Cat, route: Cell[]): Cell | null {
+  const { s } = snap;
+  const cost = catStepCost(snap, cat, { traps: false });
+  const taken = (c: Cell) => s.cats.some((k) => k.id !== cat.id && k.mode !== 'trapped' && eq(k.pos, c));
+  let best: { cell: Cell; key: [number, number] } | null = null;
+  for (const d of DIRS) {
+    const n = add(cat.pos, d);
+    if (!Number.isFinite(cost(cat.pos, n)) || taken(n)) continue;
+    // 1st: stay off her next steps; 2nd: off the route — keep close, ahead of her — run further away
+    const onRoute = route.some((c) => eq(c, n)) ? 1 : 0;
+    const k: [number, number] = onRoute ? [1, -manhattan(n, mum.pos)] : [0, manhattan(n, mum.pos)];
+    if (!best || k[0] < best.key[0] || (k[0] === best.key[0] && k[1] < best.key[1]) || (k[0] === best.key[0] && k[1] === best.key[1] && compareCells(n, best.cell) < 0)) best = { cell: n, key: k };
+  }
+  return best?.cell ?? null;
 }
 
 /** Step that increases distance from the nearest active noise (N,E,S,W tie order). */

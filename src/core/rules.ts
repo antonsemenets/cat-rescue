@@ -13,6 +13,8 @@ export const RULES = {
   dangerPenaltyShy: 40,
   /** extra cost of a cell another cat is standing on */
   crowdPenalty: 25,
+  /** a kitten is content within this many cells of its mother */
+  followLeash: 2,
 
   /** turns ground food stays before it goes stale */
   foodTtl: 8,

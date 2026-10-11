@@ -4,7 +4,7 @@ import { createInitialState, solutionToActions, validateLevel, type LevelDef } f
 import { computeResult } from '../src/core/scoring';
 import { isTurnError, runTurn } from '../src/core/turnSystem';
 import type { Action, GameState } from '../src/core/types';
-import { LEVELS } from '../src/levels';
+import { LEVELS, levelById } from '../src/levels';
 
 function runUntilWon(s: GameState, acts: Action[]): GameState {
   for (const a of acts) {
@@ -73,7 +73,7 @@ describe('levels', () => {
   });
 
   it('level 4: baiting the shady trap first lets Bublik steal it — a dead end', () => {
-    const def = LEVELS[3];
+    const def = levelById('l4')!;
     const s = runUntilWon(createInitialState(def), [
       { type: 'placeFood', kind: 'kibble', cell: { x: 6, y: 1 } },
       { type: 'placeFood', kind: 'tuna', cell: { x: 2, y: 5 } },
@@ -84,7 +84,7 @@ describe('levels', () => {
   });
 
   it('level 6: opening the spring gate too early wastes the chance', () => {
-    const def = LEVELS[5];
+    const def = levelById('l6')!;
     const s = runUntilWon(createInitialState(def), [
       { type: 'interact', objectId: 'gate' },
       { type: 'placeFood', kind: 'tuna', cell: { x: 7, y: 4 } },
@@ -95,7 +95,7 @@ describe('levels', () => {
   });
 
   it('level 8: a toy placed too early is ruined by the radio', () => {
-    const def = LEVELS[7];
+    const def = levelById('l8')!;
     const s = runUntilWon(createInitialState(def), [
       { type: 'placeTrap', cell: { x: 3, y: 6 }, dir: 'W' },
       { type: 'placeFood', kind: 'kibble', cell: { x: 3, y: 6 } },

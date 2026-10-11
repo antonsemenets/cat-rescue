@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { SPRITES } from '../art/sprites';
+  import { SPRITES, type SpriteName } from '../art/sprites';
   import { app } from '../app/store.svelte';
   import { audio } from '../audio/audio';
   import { totalStars } from '../persistence/save';
@@ -10,6 +10,16 @@
   // the meadow illustration is 1672×941; decorations anchored to it use its scale
   const BG_W = 1672;
   const BG_H = 941;
+
+  // drifting clouds: far ones are smaller, paler and slower (depth drives the parallax too)
+  // `at` = where along its path the cloud starts (0 = off the left edge, 1 = off the right)
+  const CLOUDS: { img: SpriteName; top: number; w: string; dur: number; at: number; o: number; depth: number }[] = [
+    { img: 'cloud-10', top: 3, w: 'clamp(70px, 8vw, 130px)', dur: 210, at: 0.62, o: 0.75, depth: 0.3 },
+    { img: 'cloud-6', top: 15, w: 'clamp(90px, 11vw, 190px)', dur: 180, at: 0.9, o: 0.85, depth: 0.5 },
+    { img: 'cloud-3', top: 27, w: 'clamp(110px, 14vw, 240px)', dur: 160, at: 0.22, o: 0.9, depth: 0.7 },
+    { img: 'cloud-4', top: 19, w: 'clamp(130px, 17vw, 290px)', dur: 140, at: 0.72, o: 0.95, depth: 0.85 },
+    { img: 'cloud-1', top: 5, w: 'clamp(150px, 21vw, 360px)', dur: 125, at: 0.46, o: 0.97, depth: 1 },
+  ];
 
   const allCats = LEVELS.flatMap((l) => l.cats);
   const stars = $derived(totalStars(app.save));
@@ -23,6 +33,7 @@
   let orangeLooks = $state(false);
   let sashaJoy = $state(0);
   let greyHop = $state(0);
+  let iconBop = $state(0);
   let orangeHop = $state(0);
   let hearts = $state<{ id: number; x: number; y: number; big: boolean }[]>([]);
   let heartId = 0;
@@ -75,6 +86,11 @@
     if (which === 'grey') greyHop++;
     else orangeHop++;
   }
+  function bop() {
+    audio.unlock();
+    audio.play('pop');
+    iconBop++;
+  }
   function play() {
     audio.unlock();
     audio.play('click');
@@ -110,9 +126,20 @@
   <!-- scenery -->
   <img class="bg" src={SPRITES.meadow} alt="" draggable="false" />
   <span class="sun-glow" aria-hidden="true"></span>
-  <img class="cloud c1" src={SPRITES['cloud-big']} alt="" draggable="false" />
-  <img class="cloud c2" src={SPRITES['cloud-small']} alt="" draggable="false" />
-  <img class="cloud c3" src={SPRITES['cloud-big']} alt="" draggable="false" />
+  {#each CLOUDS as c}
+    <img
+      class="cloud"
+      src={SPRITES[c.img]}
+      style:--top="{c.top}%"
+      style:--w={c.w}
+      style:--dur="{c.dur}s"
+      style:--delay="{-c.at * c.dur}s"
+      style:--o={c.o}
+      style:--depth={c.depth}
+      alt=""
+      draggable="false"
+    />
+  {/each}
 
   {#if portrait}
     <img class="deco tree" src={SPRITES.tree} alt="" draggable="false" />
@@ -122,7 +149,8 @@
   {/if}
 
   <button class="black-cat" onclick={() => (audio.unlock(), audio.play('purr'))} aria-label="Спящая кошка на заборе">
-    <img src={SPRITES['black-fence']} alt="" draggable="false" />
+    <img class="bc-fence" src={SPRITES['fence-long']} alt="" draggable="false" />
+    <img class="bc-cat" src={SPRITES['cat-nap']} alt="" draggable="false" />
     <span class="zz z1"><svg viewBox="0 0 20 20"><path d="M4 4 H15 L4 16 H15" /></svg></span>
     <span class="zz z2"><svg viewBox="0 0 20 20"><path d="M4 4 H15 L4 16 H15" /></svg></span>
   </button>
@@ -151,6 +179,14 @@
         <span class="heart" class:big={hh.big} style:left="{hh.x}%" style:top="{hh.y}%"><Icon name="heart" size={hh.big ? 30 : 20} /></span>
       {/each}
     </span>
+    <!-- Sasha stands behind a hedge, so she doesn't grow out of thin air -->
+    <span class="hedge" aria-hidden="true">
+      <img class="hb mid" src={SPRITES['bush-round']} alt="" draggable="false" />
+      <img class="hb left" src={SPRITES['bush-wide']} alt="" draggable="false" />
+      <img class="hb right" src={SPRITES['bush-wide']} alt="" draggable="false" />
+      <img class="hb flw" src={SPRITES.flowers} alt="" draggable="false" />
+      <img class="hb grs" src={SPRITES.grass} alt="" draggable="false" />
+    </span>
   </button>
 
   <button class="kitten grey" onclick={() => poke('grey')} aria-label="Серый котёнок">
@@ -178,8 +214,16 @@
   <!-- menu -->
   <main class="panel">
     <div class="logo">
-      <div class="paw"><Icon name="paw" size={36} /></div>
-      <h1><span class="cat">Cat</span> <span class="rescue">Rescue</span></h1>
+      <h1 class="brand" style:--word="url({SPRITES['logo-word']})">
+        <span class="mark" aria-hidden="true">
+          <img class="leaf l" src={SPRITES['logo-leaf-l']} alt="" draggable="false" />
+          <img class="leaf r" src={SPRITES['logo-leaf-r']} alt="" draggable="false" />
+          <button class="icon" onclick={bop} tabindex="-1" aria-hidden="true">
+            {#key iconBop}<img class:bop={iconBop > 0} src={SPRITES['logo-icon']} alt="" draggable="false" />{/key}
+          </button>
+        </span>
+        <span class="word"><img src={SPRITES['logo-word']} alt="Purrfect Rescue" draggable="false" /></span>
+      </h1>
       <p class="tag">Уютные головоломки о спасении уличных котиков</p>
     </div>
 
@@ -257,34 +301,21 @@
   }
   .cloud {
     position: absolute;
-    width: clamp(110px, 16vw, 260px);
-    opacity: 0.95;
-    animation: drift 110s linear infinite;
-    filter: drop-shadow(0 6px 10px rgba(80, 140, 190, 0.18));
-  }
-  .c1 {
-    top: 7%;
-    animation-delay: -20s;
-  }
-  .c2 {
-    top: 18%;
-    width: clamp(80px, 10vw, 170px);
-    animation-duration: 150s;
-    animation-delay: -95s;
-  }
-  .c3 {
-    top: 30%;
-    width: clamp(90px, 12vw, 200px);
-    animation-duration: 180s;
-    animation-delay: -40s;
-    opacity: 0.85;
+    left: 0;
+    top: var(--top);
+    width: var(--w);
+    opacity: var(--o);
+    translate: calc(var(--px) * -14px * var(--depth)) calc(var(--py) * -4px * var(--depth));
+    animation: drift var(--dur) linear var(--delay) infinite;
+    filter: drop-shadow(0 6px 10px rgba(80, 140, 190, 0.16));
+    will-change: transform;
   }
   @keyframes drift {
     from {
-      left: -20%;
+      transform: translateX(-35vw);
     }
     to {
-      left: 110%;
+      transform: translateX(110vw);
     }
   }
 
@@ -292,27 +323,40 @@
   .front {
     position: absolute;
   }
+  /* a charcoal cat napping on a bit of fence; the box is the fence tile, the cat lies on top */
   .black-cat {
     position: absolute;
-    left: calc(var(--ox) + 1462px * var(--s));
-    top: calc(var(--oy) + 470px * var(--s));
-    width: calc(190px * var(--s));
+    left: calc(var(--ox) + 1370px * var(--s));
+    top: calc(var(--oy) + 585px * var(--s));
+    width: calc(275px * var(--s));
+    aspect-ratio: 483 / 187;
+    padding: 0;
     z-index: 2;
     translate: calc(var(--px) * 6px) 0;
     animation: fadeIn 0.8s ease-out 1.1s both;
   }
-  .black-cat img {
+  .bc-fence {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    display: block;
-    transform-origin: 50% 80%;
+    filter: drop-shadow(0 6px 8px rgba(40, 60, 20, 0.15));
+  }
+  /* belly just below the picket tips, tail hanging over the front */
+  .bc-cat {
+    position: absolute;
+    left: 21%;
+    top: -60%;
+    width: 60%;
+    transform-origin: 50% 68%;
     animation: breathe 4.4s ease-in-out infinite;
+    filter: drop-shadow(0 4px 6px rgba(30, 20, 30, 0.2));
   }
   .zz {
     position: absolute;
     width: 16px;
     height: 16px;
-    left: 70%;
-    top: 4%;
+    left: 76%;
+    top: -58%;
     opacity: 0;
     animation: zz 3.2s ease-out infinite;
   }
@@ -399,6 +443,65 @@
     }
     65% {
       transform: scale(0.98, 1.03) translateY(-2%);
+    }
+  }
+  .hedge {
+    position: absolute;
+    left: -7%;
+    right: -7%;
+    bottom: -5%;
+    height: 27%;
+    pointer-events: none;
+    animation: hedgeIn 0.8s var(--ease-back) 0.1s both;
+  }
+  .hedge .hb {
+    position: absolute;
+    bottom: 0;
+    width: 40%;
+    transform-origin: 50% 100%;
+    animation: rustle 4.8s ease-in-out infinite;
+    filter: drop-shadow(0 -2px 6px rgba(40, 70, 20, 0.12));
+  }
+  .hedge .hb.left {
+    left: 0;
+    animation-delay: -1.2s;
+  }
+  .hedge .hb.mid {
+    left: 31%;
+    width: 36%;
+    bottom: 10%;
+    animation-delay: -2.6s;
+  }
+  .hedge .hb.right {
+    right: 0;
+    scale: -1 1;
+    animation-delay: -0.4s;
+  }
+  .hedge .hb.flw {
+    left: 15%;
+    width: 31%;
+    bottom: -14%;
+    animation-delay: -3.1s;
+  }
+  .hedge .hb.grs {
+    right: 17%;
+    width: 27%;
+    bottom: -12%;
+    animation-delay: -1.9s;
+  }
+  @keyframes hedgeIn {
+    from {
+      opacity: 0;
+      transform: translateY(35%) scaleY(0.7);
+    }
+  }
+  @keyframes rustle {
+    0%,
+    100% {
+      transform: skewX(0deg);
+    }
+    50% {
+      transform: skewX(-1.6deg) scaleY(1.015);
     }
   }
   .heart {
@@ -683,56 +786,142 @@
       transform: translateY(-40px) scale(0.9);
     }
   }
-  .paw {
-    width: 72px;
-    height: 72px;
-    border-radius: 24px;
+  /* ---- the Purrfect Rescue logo: paw badge, two sprigs and the wordmark */
+  .brand {
+    position: relative;
+    width: min(100%, 400px, 46vh);
     display: grid;
-    place-items: center;
-    color: #fff;
-    background: linear-gradient(160deg, #f8b671, var(--orange));
-    box-shadow:
-      0 5px 0 var(--orange-dark),
-      0 12px 24px rgba(216, 132, 59, 0.35);
-    transform: rotate(-7deg);
-    animation: pawWiggle 4s ease-in-out 1.4s infinite;
+    justify-items: center;
+    margin: 0;
+  }
+  .mark {
+    position: relative;
+    width: 41%;
+    aspect-ratio: 420 / 409;
+    z-index: 1;
+  }
+  .leaf {
+    position: absolute;
+    bottom: 8%;
+    width: 79%;
+    animation:
+      leafIn 0.8s var(--ease-back) 0.45s both,
+      sway 4.2s ease-in-out 1.4s infinite;
+  }
+  .leaf.l {
+    right: 62%;
+    transform-origin: 100% 85%;
+  }
+  .leaf.r {
+    left: 62%;
+    transform-origin: 0% 85%;
+    --dir: -1;
+    animation-delay: 0.5s, 1.6s;
+  }
+  @keyframes leafIn {
+    from {
+      opacity: 0;
+      transform: rotate(calc(var(--dir, 1) * 55deg)) scale(0.4);
+    }
+  }
+  @keyframes sway {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(calc(var(--dir, 1) * 4deg));
+    }
+  }
+  .icon {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    cursor: pointer;
+    pointer-events: auto;
+    animation: iconIn 0.75s var(--ease-back) 0.15s both;
+  }
+  .icon img {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 8px 14px rgba(216, 112, 40, 0.35));
+    animation: pawWiggle 4.5s ease-in-out 2s infinite;
+  }
+  .icon img.bop {
+    animation: iconBop 0.6s var(--ease-back);
+  }
+  @keyframes iconIn {
+    from {
+      opacity: 0;
+      transform: scale(0.2) rotate(-25deg);
+    }
   }
   @keyframes pawWiggle {
     0%,
-    80%,
+    78%,
     100% {
-      transform: rotate(-7deg);
+      transform: rotate(0deg);
     }
-    85% {
-      transform: rotate(6deg) scale(1.06);
+    84% {
+      transform: rotate(7deg) scale(1.05);
     }
-    92% {
-      transform: rotate(-11deg);
+    91% {
+      transform: rotate(-6deg);
     }
   }
-  h1 {
-    font-size: clamp(52px, 6.4vw, 92px);
-    font-weight: 900;
-    line-height: 0.95;
-    letter-spacing: -0.02em;
-    white-space: nowrap;
-    /* thick white sticker outline */
-    text-shadow:
-      0 4px 0 #fff,
-      4px 0 0 #fff,
-      -4px 0 0 #fff,
-      0 -4px 0 #fff,
-      3px 3px 0 #fff,
-      -3px 3px 0 #fff,
-      3px -3px 0 #fff,
-      -3px -3px 0 #fff,
-      0 10px 18px rgba(76, 59, 58, 0.22);
+  @keyframes iconBop {
+    35% {
+      transform: scale(0.86, 1.1) translateY(-6%);
+    }
+    65% {
+      transform: scale(1.08, 0.92);
+    }
   }
-  .cat {
-    color: #4a3530;
+  .word {
+    position: relative;
+    z-index: 2;
+    display: block;
+    width: 100%;
+    margin-top: -5%;
+    aspect-ratio: 1000 / 398;
+    animation: wordIn 0.85s var(--ease-back) 0.3s both;
   }
-  .rescue {
-    color: #e48a3c;
+  .word img {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 8px 14px rgba(76, 59, 58, 0.22));
+  }
+  /* a soft glint that runs over the letters now and then */
+  .word::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    -webkit-mask: var(--word) center / 100% 100% no-repeat;
+    mask: var(--word) center / 100% 100% no-repeat;
+    background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.6) 48%, transparent 58%) 0 0 / 300% 100% no-repeat;
+    animation: glint 6s ease-in-out 1.8s infinite;
+    pointer-events: none;
+  }
+  @keyframes wordIn {
+    0% {
+      opacity: 0;
+      transform: translateY(-30px) scale(0.85);
+    }
+    60% {
+      opacity: 1;
+      transform: translateY(4px) scale(1.03, 0.97);
+    }
+  }
+  @keyframes glint {
+    0% {
+      background-position: 100% 0;
+    }
+    30%,
+    100% {
+      background-position: 0% 0;
+    }
   }
   .tag {
     font-weight: 700;
@@ -820,13 +1009,17 @@
     width: min(400px, 88vw);
     gap: 12px;
   }
-  .portrait h1 {
-    font-size: clamp(48px, 14vw, 76px);
+  /* the logo shrinks on short phones so Sasha keeps her space below */
+  .portrait .brand {
+    width: min(62vw, 250px, 25vh);
   }
-  .portrait .paw {
-    width: 60px;
-    height: 60px;
-    border-radius: 20px;
+  .portrait .logo {
+    gap: 6px;
+  }
+  @media (max-height: 760px) {
+    .portrait .tag {
+      display: none;
+    }
   }
   .portrait .tag {
     font-size: 15px;
@@ -871,14 +1064,18 @@
     bottom: 8vh;
     height: 18vh;
   }
+  /* in portrait the cat naps at the right edge, peeking out between the menu and Sasha */
   .portrait .black-cat {
     left: auto;
-    right: 3vw;
+    right: -5vw;
     top: auto;
-    bottom: 37vh;
-    right: 1vw;
-    width: 25vw;
-    max-width: 130px;
+    bottom: 33vh;
+    width: 38vw;
+  }
+  .portrait .fence-r {
+    right: -4vw;
+    bottom: 29.5vh;
+    width: 40vw;
   }
   .portrait .deco {
     z-index: 1;
@@ -899,11 +1096,6 @@
     bottom: 29vh;
     width: 58vw;
   }
-  .portrait .fence-r {
-    right: -4vw;
-    bottom: 29.5vh;
-    width: 40vw;
-  }
   .portrait .flowers-l {
     height: 14vh;
     bottom: -3vh;
@@ -920,12 +1112,14 @@
       width: min(380px, 42vw);
       gap: 10px;
     }
-    .paw,
     .tag {
       display: none;
     }
-    h1 {
-      font-size: clamp(36px, 11vh, 52px);
+    .brand {
+      width: min(100%, 60vh);
+    }
+    .mark {
+      width: 36%;
     }
     .buttons {
       grid-template-columns: repeat(3, 1fr);
@@ -974,6 +1168,12 @@
     .kitten.orange {
       right: calc(3vw + var(--safe-right));
       height: 36vh;
+    }
+    /* up on the fence by the house, above the ginger kitten */
+    .black-cat {
+      left: calc(var(--ox) + 1440px * var(--s));
+      top: calc(var(--oy) + 500px * var(--s));
+      width: calc(230px * var(--s));
     }
   }
 </style>

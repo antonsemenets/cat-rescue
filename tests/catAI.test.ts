@@ -171,4 +171,57 @@ describe('cat AI — special traits', () => {
     s = step(s, { type: 'wait' }).state;
     expect(catOf(s, 'proud').target?.id).toBe('f');
   });
+
+  it('a picky eater ignores everything but its favourite food', () => {
+    const s = state({ map: MAP, cats: [catDef('picky', [3, 2], { hunger: 3 }, { preferredFood: 'tuna', picky: true })] });
+    s.foods.push({ id: 'k', kind: 'kibble', cell: { x: 4, y: 2 }, ttl: 9 });
+    expect(planIntents(s)[0].target?.kind).not.toBe('food');
+    s.foods.push({ id: 't', kind: 'tuna', cell: { x: 0, y: 2 }, ttl: 9 });
+    expect(planIntents(s)[0].target?.id).toBe('t');
+  });
+
+  it('a kitten trails its mother and waits beside her trap', () => {
+    let s = state({
+      map: ['.........', '.........', '.........'],
+      cats: [catDef('mum', [2, 1], { hunger: 0 }, { patrol: [[2, 1], [8, 1]] }), catDef('kit', [0, 1], { hunger: 0 }, { follows: 'mum' })],
+    });
+    const gaps: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      s = step(s, { type: 'wait' }).state;
+      gaps.push(catOf(s, 'mum').pos.x - catOf(s, 'kit').pos.x);
+    }
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(3);
+    expect(catOf(s, 'kit').target?.kind).toBe('follow');
+
+    // mum sits in a trap at the far end: the kitten comes over and stays close
+    s = state({
+      map: ['.........', '.........', '.........'],
+      cats: [catDef('mum', [8, 0], { hunger: 0 }), catDef('kit', [0, 1], { hunger: 0 }, { follows: 'mum' })],
+      traps: [{ id: 't', pos: [8, 1], dir: 'W' }],
+    });
+    s.cats[0].pos = { x: 8, y: 1 };
+    s.cats[0].mode = 'trapped';
+    s.cats[0].trappedIn = 't';
+    s.traps[0].occupiedBy = 'mum';
+    s = play(s, waits(12)).state;
+    const kit = catOf(s, 'kit');
+    expect(Math.min(Math.abs(kit.pos.x - 8), Math.abs(kit.pos.x - 7)) + Math.abs(kit.pos.y - 1)).toBeLessThanOrEqual(2);
+    expect(kit.activity).not.toBe('walk');
+  });
+
+  it('a kitten never blocks its mother in a narrow corridor', () => {
+    // 1-wide shaded corridor; mum patrols back and forth, the kitten rests behind her
+    let s = state({
+      map: ['#########', '.........', '#########'],
+      cats: [catDef('mum', [4, 1], { hunger: 0, fear: 2 }, { patrol: [[7, 1], [1, 1]] }), catDef('kit', [3, 1], { hunger: 0 }, { follows: 'mum' })],
+    });
+    const xs: number[] = [];
+    for (let i = 0; i < 24; i++) {
+      s = step(s, { type: 'wait' }).state;
+      xs.push(catOf(s, 'mum').pos.x);
+    }
+    // she reaches both ends of her patrol
+    expect(Math.max(...xs)).toBe(7);
+    expect(Math.min(...xs)).toBe(1);
+  });
 });

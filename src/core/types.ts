@@ -53,6 +53,8 @@ export interface CatLook {
   eyes: string;
   /** 3 = drawn without the near front leg */
   legs?: 3 | 4;
+  /** drawn smaller: a kitten */
+  kitten?: boolean;
 }
 
 export interface CatTraits {
@@ -62,7 +64,7 @@ export interface CatTraits {
   trust: number; // 0..3
 }
 
-export type TargetKind = 'food' | 'toy' | 'hide' | 'patrol' | 'home' | 'flee';
+export type TargetKind = 'food' | 'toy' | 'hide' | 'patrol' | 'home' | 'flee' | 'follow';
 
 export interface Target {
   kind: TargetKind;
@@ -97,6 +99,10 @@ export interface Cat {
   cooldown: number;
   /** does not notice new food closer than this (an independent cat dislikes handouts) */
   minNotice: number;
+  /** eats nothing but its preferred food */
+  picky: boolean;
+  /** id of the mother cat this kitten keeps close to */
+  follows: string | null;
 }
 
 export interface Trap {

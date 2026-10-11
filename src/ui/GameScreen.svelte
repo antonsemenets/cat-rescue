@@ -110,9 +110,9 @@
 
 <div class="game" class:tool-active={!!session.tool} class:compact style:--top="{topH}px" style:--bot="{botH}px" style:--tbw="{tbW}px">
   <div class="bg" aria-hidden="true">
-    <span class="cloud c1"></span>
-    <span class="cloud c2"></span>
-    <span class="cloud c3"></span>
+    <img class="cloud c1" src={SPRITES['cloud-7']} alt="" draggable="false" />
+    <img class="cloud c2" src={SPRITES['cloud-11']} alt="" draggable="false" />
+    <img class="cloud c3" src={SPRITES['cloud-9']} alt="" draggable="false" />
   </div>
   <div class="board" bind:this={boardEl} role="application" aria-label="Игровое поле — {def.title}"></div>
 
@@ -217,31 +217,29 @@
   }
   .cloud {
     position: absolute;
-    width: 160px;
-    height: 46px;
-    border-radius: 50px;
-    background: rgba(255, 253, 248, 0.85);
-    box-shadow:
-      36px -18px 0 4px rgba(255, 253, 248, 0.85),
-      80px -4px 0 0 rgba(255, 253, 248, 0.85);
+    width: clamp(120px, 14vw, 220px);
+    opacity: 0.85;
+    filter: drop-shadow(0 4px 8px rgba(80, 140, 190, 0.12));
     animation: drift 90s linear infinite;
+    pointer-events: none;
+    user-select: none;
   }
   .c1 {
-    top: 14%;
+    top: 12%;
     left: -12%;
   }
   .c2 {
     top: 30%;
     left: 50%;
-    transform: scale(0.65);
+    width: clamp(70px, 8vw, 120px);
     animation-duration: 120s;
     animation-delay: -50s;
-    opacity: 0.8;
+    opacity: 0.7;
   }
   .c3 {
-    top: 8%;
+    top: 6%;
     left: 75%;
-    transform: scale(0.8);
+    width: clamp(100px, 11vw, 180px);
     animation-duration: 140s;
     animation-delay: -90s;
   }

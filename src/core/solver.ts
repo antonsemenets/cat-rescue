@@ -24,7 +24,7 @@ export interface SolveResult {
   exhausted: boolean;
 }
 
-function stateKey(s: GameState, withTurn: boolean): string {
+export function stateKey(s: GameState, withTurn: boolean): string {
   const cats = s.cats
     .map((c) => `${c.id}:${c.pos.x},${c.pos.y},${c.hunger},${c.trust},${c.mode},${c.timer},${c.patrolIndex},${c.cooldown},${c.target?.id ?? ''}`)
     .join('|');

@@ -468,9 +468,13 @@ export function catSvg(look: CatLook, pose: CatPose, opts: CatSvgOptions = {}): 
     ? `<g>${strokeAll(P.front, outline, ow * 2)}${fills(P.front, base)}${pattern === 'tuxedo' || pattern === 'siamese' ? fills([P.paws[P.paws.length - 1]], pattern === 'tuxedo' ? accent : points) : ''}</g>`
     : '';
 
-  const order = P.tailFront ? bodyGroup + headGroup + tailGroup : tailGroup + bodyGroup + headGroup + frontGroup;
+  // kittens: a big round head on a small body
+  const headOut = look.kitten ? `<g transform="translate(${cx} ${cy}) scale(1.2) translate(${-cx} ${-cy})">${headGroup}</g>` : headGroup;
+  const order = P.tailFront ? bodyGroup + headOut + tailGroup : tailGroup + bodyGroup + headOut + frontGroup;
 
-  const shifted = P.dx ? `<g transform="translate(${P.dx} 0)">${defs}${order}</g>` : defs + order;
+  let shifted = P.dx ? `<g transform="translate(${P.dx} 0)">${defs}${order}</g>` : defs + order;
+  // the big kitten head needs room: shrink the whole kitten towards its paws
+  if (look.kitten) shifted = `<g transform="translate(58 116) scale(0.88) translate(-58 -116)">${shifted}</g>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="${size}" height="${size}">${shifted}</svg>`;
 }
 

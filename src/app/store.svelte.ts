@@ -7,9 +7,21 @@ import { defaultSave, isLevelUnlocked, loadSave, recordLevelResult, writeSave, t
 
 export type Screen = 'menu' | 'levels' | 'game' | 'shelter';
 
+/** dev only: ?screen=shelter or ?level=l12 opens a screen / level directly (handy for testing) */
+function devParam(name: string): string | null {
+  if (!import.meta.env.DEV || typeof location === 'undefined') return null;
+  return new URLSearchParams(location.search).get(name);
+}
+const devLevel = LEVELS.find((l) => l.id === devParam('level'))?.id ?? null;
+function startScreen(): Screen {
+  if (devLevel) return 'game';
+  const s = devParam('screen');
+  return s === 'levels' || s === 'shelter' ? s : 'menu';
+}
+
 class AppState {
-  screen = $state<Screen>('menu');
-  levelId = $state<string>(LEVELS[0].id);
+  screen = $state<Screen>(startScreen());
+  levelId = $state<string>(devLevel ?? LEVELS[0].id);
   save = $state<SaveData>(loadSave());
   settingsOpen = $state(false);
   /** cats rescued since the shelter was last opened */

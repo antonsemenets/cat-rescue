@@ -168,6 +168,8 @@ export function recordLevelResult(data: SaveData, levelId: string, result: Level
 export function isLevelUnlocked(data: SaveData, orderedIds: string[], id: string): boolean {
   const i = orderedIds.indexOf(id);
   if (i <= 0) return i === 0;
+  // a level once beaten stays open even if the order of levels changes later
+  if (data.levels[id]?.completed) return true;
   return !!data.levels[orderedIds[i - 1]]?.completed;
 }
 

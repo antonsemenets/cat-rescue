@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
   import type { GameSession } from '../../app/session.svelte';
-  import { catSenses, catStatus, FOOD_NAMES, TRAITS, turnsWord } from '../../app/text';
+  import { catSenses, catStatus, FOOD_NAMES, gateWords, NOISE_ACTION, TRAITS, turnsWord } from '../../app/text';
   import { validRotateDirs } from '../../core/trapSystem';
   import { turnsUntilNoise } from '../../core/world';
   import CatPortrait from '../CatPortrait.svelte';
@@ -41,8 +41,8 @@
             {/each}
           </div>
           <ul class="senses">
-            {#each catSenses(cat) as line}<li>{line}</li>{/each}
-            {#if cat.preferredFood}<li>Любимое угощение — {FOOD_NAMES[cat.preferredFood]}</li>{/if}
+            {#each catSenses(cat, s) as line}<li>{line}</li>{/each}
+            {#if cat.preferredFood && !cat.picky}<li>Любимое угощение — {FOOD_NAMES[cat.preferredFood]}</li>{/if}
           </ul>
         {/if}
       {:else if sel.kind === 'trap'}
@@ -65,9 +65,10 @@
       {:else if sel.kind === 'gate'}
         {@const g = s.gates.find((x) => x.id === sel.id)}
         {#if g}
-          <h3>Калитка</h3>
-          <p class="status">{g.open ? (g.autoClose ? `Открыта, захлопнется через ${turnsWord(Math.max(1, g.openTimer))}` : 'Открыта') : 'Закрыта — кошки не пройдут'}</p>
-          {#if g.autoClose}<ul class="senses"><li>Калитка на пружине: после открытия сама закрывается через {turnsWord(g.autoClose)}.</li></ul>{/if}
+          {@const w = gateWords(session.def.location)}
+          <h3>{w.title}</h3>
+          <p class="status">{g.open ? (g.autoClose ? `${w.open}, ${w.slams} через ${turnsWord(Math.max(1, g.openTimer))}` : w.open) : `${w.closed} — кошки не пройдут`}</p>
+          {#if g.autoClose}<ul class="senses"><li>{w.spring(g.autoClose)}</li></ul>{/if}
           <button class="btn small primary" disabled={s.status !== 'playing'} onclick={() => session.quickAction({ type: 'interact', objectId: g.id })}>
             {g.open ? 'Закрыть' : 'Открыть'} · 1 ход
           </button>
@@ -88,14 +89,19 @@
             {#if n.schedule}<li>Шумит {turnsWord(n.schedule.duration)}{n.schedule.every ? `, повторяется каждые ${n.schedule.every}` : ''}.</li>{/if}
           </ul>
           {#if n.interactive}
-            <button class="btn small primary" onclick={() => session.quickAction({ type: 'interact', objectId: n.id })}>Включить · 1 ход</button>
+            <button class="btn small primary" onclick={() => session.quickAction({ type: 'interact', objectId: n.id })}>{NOISE_ACTION[n.kind] ?? 'Включить'} · 1 ход</button>
           {/if}
         {/if}
       {:else if sel.kind === 'food'}
         {@const f = s.foods.find((x) => x.id === sel.id)}
         {#if f}
-          <h3>{f.kind === 'tuna' ? 'Тунец' : 'Корм'}</h3>
-          <p class="status">Испортится через {turnsWord(f.ttl)}</p>
+          {#if f.ttl > 50}
+            <h3>Миска соседки</h3>
+            <p class="status">{f.kind === 'tuna' ? 'Тунец' : 'Корм'} — стоит тут давно и не испортится. Кто съест, станет доверчивее, но и сытее.</p>
+          {:else}
+            <h3>{f.kind === 'tuna' ? 'Тунец' : 'Корм'}</h3>
+            <p class="status">Испортится через {turnsWord(f.ttl)}</p>
+          {/if}
         {/if}
       {:else if sel.kind === 'toy'}
         {@const t = s.toys.find((x) => x.id === sel.id)}

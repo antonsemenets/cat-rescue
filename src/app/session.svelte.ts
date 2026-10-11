@@ -16,7 +16,7 @@ import { trapAt } from '../core/world';
 import type { BoardView } from '../render/BoardView';
 import { EMPTY_OVERLAY, type Ghost, type Overlay, type PathPreview, type Zone } from '../render/types';
 import { app } from './store.svelte';
-import { ITEM_NAMES, turnsWord } from './text';
+import { FOOD_NAMES, ITEM_NAMES, NOISE_ACTION, NOISE_SOUND, gateWords, turnsWord } from './text';
 
 export type Tool = 'trap' | 'rotate' | 'kibble' | 'tuna' | 'box' | 'toy' | 'hand';
 
@@ -266,6 +266,10 @@ export class GameSession {
         const spot = trapAt(s, cell)?.trap.back ?? cell;
         const proud = s.cats.find((c) => c.mode !== 'trapped' && c.minNotice > 0 && manhattan(c.pos, spot) < c.minNotice);
         if (proud) return { action: a, info: `Слишком близко: ${proud.name} не берёт подачки — он заметит еду только издалека` };
+        const free = s.cats.filter((c) => c.mode !== 'trapped' && c.hunger > 0);
+        const snobs = free.filter((c) => c.picky && c.preferredFood !== this.tool);
+        if (free.length > 0 && snobs.length === free.length)
+          return { action: a, info: `${snobs.map((c) => c.name).join(' и ')} такое не ест — только ${FOOD_NAMES[snobs[0].preferredFood!]}` };
         return { action: a, info: trapAt(s, cell) ? 'Положить приманку в ловушку' : 'Положить на землю' };
       }
       case 'box': {
@@ -299,8 +303,10 @@ export class GameSession {
 
   interactLabel(id: string): string {
     const g = this.state.gates.find((x) => x.id === id);
-    if (g) return g.open ? 'Закрыть калитку' : g.autoClose ? `Открыть калитку (закроется через ${turnsWord(g.autoClose)})` : 'Открыть калитку';
-    return 'Включить';
+    const w = gateWords(this.def.location);
+    if (g) return g.open ? `Закрыть ${w.acc}` : g.autoClose ? `Открыть ${w.acc} (${w.slams} через ${turnsWord(g.autoClose)})` : `Открыть ${w.acc}`;
+    const n = this.state.noises.find((x) => x.id === id);
+    return `${NOISE_ACTION[n?.kind ?? ''] ?? 'Включить'} · ${NOISE_SOUND[n?.kind ?? ''] ?? 'шумит'} ${turnsWord(n?.manualDuration ?? 2)}`;
   }
 
   // ---------------------------------------------------------------------------
@@ -689,7 +695,9 @@ export class GameSession {
       if (r > 0) zones.push({ cells: cells.filter((c) => manhattan(c, cat.pos) <= r), color: 0xf48fb1, alpha: 0.16 });
       return zones;
     }
-    const kind: FoodKind = t === 'tuna' ? 'tuna' : 'kibble';
+    const kind: FoodKind = t === 'tuna' ? 'tuna' : cat.picky && !t && cat.preferredFood ? cat.preferredFood : 'kibble';
+    // a picky eater does not care about this kind of food at all
+    if (cat.picky && cat.preferredFood !== kind) return zones;
     const r = foodNoticeRadius(cat, kind);
     // an independent cat notices food only in a ring: not too close, not too far
     if (r > 0) zones.push({ cells: cells.filter((c) => manhattan(c, cat.pos) <= r && manhattan(c, cat.pos) >= cat.minNotice), color: this.catColor(cat.id), alpha: 0.2 });

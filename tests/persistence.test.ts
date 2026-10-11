@@ -72,4 +72,13 @@ describe('persistence', () => {
     expect(isLevelUnlocked(d, ids, 'l2')).toBe(true);
     expect(isLevelUnlocked(d, ids, 'l3')).toBe(false);
   });
+
+  it('keeps a beaten level open when levels are reordered', () => {
+    let d = defaultSave();
+    d = recordLevelResult(d, 'l1', RESULT, []);
+    d = recordLevelResult(d, 'l3', RESULT, []);
+    // l3 moved before l2, which is not beaten yet
+    expect(isLevelUnlocked(d, ['l1', 'l3', 'l2'], 'l2')).toBe(true);
+    expect(isLevelUnlocked(d, ['l1', 'l2', 'l3'], 'l3')).toBe(true);
+  });
 });

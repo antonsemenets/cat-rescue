@@ -36,6 +36,8 @@ import { ensureTextures, type SvgTexture } from './textures';
 import { EMPTY_OVERLAY, type BoardCallbacks, type Ghost, type Insets, type Overlay, type RenderSettings } from './types';
 
 const CAT_SIZE = 100;
+/** kittens are drawn this much smaller */
+const KITTEN_SIZE = 0.8;
 const FX_DEPTH = 100000;
 
 type EmoteIcon = Props.EmoteIcon;
@@ -53,6 +55,8 @@ interface CatView {
   moving: boolean;
   phase: number;
   baseScale: number;
+  /** 1 for grown cats, smaller for kittens */
+  size: number;
   cell: Cell;
   zTimer: number;
 }
@@ -478,9 +482,12 @@ export class BoardScene extends Phaser.Scene {
     ring.lineStyle(2, 0xf2a65a, 0.9);
     ring.strokeEllipse(0, 0, 76, 34);
     ring.setVisible(false);
-    const baseScale = CAT_SIZE / (128 * this.texScale);
+    const size = this.def.cats.find((d) => d.id === cat.id)?.look.kitten ? KITTEN_SIZE : 1;
+    shadow.setScale(size);
+    ring.setScale(size);
+    const baseScale = (CAT_SIZE * size) / (128 * this.texScale);
     const sprite = this.add.image(0, 4, `cat:${cat.id}:sit`).setOrigin(0.5, 114 / 128).setScale(baseScale);
-    const status = this.add.image(0, -CAT_SIZE * 0.78, 'emote:food').setScale(0.42 / this.texScale).setVisible(false);
+    const status = this.add.image(0, -CAT_SIZE * size * 0.78, 'emote:food').setScale(0.42 / this.texScale).setVisible(false);
     const c = this.add.container(p.x, p.y, [shadow, ring, sprite, status]);
     const v: CatView = {
       id: cat.id,
@@ -495,6 +502,7 @@ export class BoardScene extends Phaser.Scene {
       moving: false,
       phase: (hash(cat.pos.x * 3, cat.pos.y * 7) % 100) / 16,
       baseScale,
+      size,
       cell: { ...cat.pos },
       zTimer: 0,
     };
@@ -1138,7 +1146,7 @@ export class BoardScene extends Phaser.Scene {
           if (!events.some((e) => e.type === 'catEat' && e.catId === ev.catId)) {
             this.time.delayedCall(this.dur(220), () => {
               const v = this.cats.get(ev.catId);
-              if (v) this.burst(v.c.x + (v.left ? -10 : 10), v.c.y - CAT_SIZE * 0.7, 'heart', 1);
+              if (v) this.burst(v.c.x + (v.left ? -10 : 10), v.c.y - CAT_SIZE * v.size * 0.7, 'heart', 1);
             });
           }
           break;
@@ -1309,7 +1317,7 @@ export class BoardScene extends Phaser.Scene {
     const v = this.cats.get(catId);
     if (!v) return;
     const x = v.c.x + (v.left ? -16 : 16);
-    const y = v.c.y - CAT_SIZE * 0.9;
+    const y = v.c.y - CAT_SIZE * v.size * 0.9;
     const im = this.add.image(x, y, `emote:${kind}`).setDepth(FX_DEPTH + 5);
     const s = (big ? 0.82 : 0.66) / this.texScale;
     this.transient.add(im);
@@ -1405,7 +1413,7 @@ export class BoardScene extends Phaser.Scene {
       const k = reduced || !breathing ? 0 : Math.sin(time / (v.pose === 'sleep' ? 700 : 480) + v.phase) * (v.pose === 'sleep' ? 0.025 : 0.014);
       const s = v.sprite.scaleX;
       v.sprite.setScale(s, Math.abs(s) * (1 + k));
-      if (v.statusKind) v.status.setY(-CAT_SIZE * 0.78 + (reduced ? 0 : Math.sin(time / 300 + v.phase) * 2));
+      if (v.statusKind) v.status.setY(-CAT_SIZE * v.size * 0.78 + (reduced ? 0 : Math.sin(time / 300 + v.phase) * 2));
       if (v.pose === 'sleep' && !reduced) {
         v.zTimer -= delta;
         if (v.zTimer <= 0) {
@@ -1420,7 +1428,7 @@ export class BoardScene extends Phaser.Scene {
       this.focusArrow.setVisible(!!v);
       if (v) {
         const bob = reduced ? 0 : Math.abs(Math.sin(time / 260)) * 12;
-        this.focusArrow.setPosition(v.c.x, v.c.y - CAT_SIZE * 1.05 - bob);
+        this.focusArrow.setPosition(v.c.x, v.c.y - CAT_SIZE * v.size * 1.05 - bob);
       }
     }
     // noise waves and danger pulse
@@ -1531,7 +1539,8 @@ export class BoardScene extends Phaser.Scene {
       if (!cat || cat.mode === 'trapped' || !v.c.visible) continue;
       const dx = wx - v.c.x;
       const dy = wy - v.c.y;
-      if (Math.abs(dx) < CAT_SIZE * 0.36 && dy < 8 && dy > -CAT_SIZE * 0.72) {
+      const k = Math.max(v.size, 0.85);
+      if (Math.abs(dx) < CAT_SIZE * k * 0.36 && dy < 8 && dy > -CAT_SIZE * k * 0.72) {
         if (!best || v.c.depth > best.depth) best = { id: v.id, depth: v.c.depth };
       }
     }

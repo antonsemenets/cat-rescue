@@ -7,8 +7,7 @@ export type SpriteName =
   | 'meadow'
   | 'tree'
   | 'house'
-  | 'cloud-big'
-  | 'cloud-small'
+  | `cloud-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11}`
   | 'bush-wide'
   | 'bush-round'
   | 'sun'
@@ -30,7 +29,11 @@ export type SpriteName =
   | 'grey-sit'
   | 'orange-happy'
   | 'orange-look'
-  | 'black-fence';
+  | 'cat-nap'
+  | 'logo-icon'
+  | 'logo-leaf-l'
+  | 'logo-leaf-r'
+  | 'logo-word';
 
 export const SPRITES = Object.fromEntries(
   Object.entries(files).map(([path, url]) => [path.slice(path.lastIndexOf('/') + 1).replace('.webp', ''), url]),

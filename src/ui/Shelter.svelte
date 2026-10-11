@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount, tick } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { fly, scale } from 'svelte/transition';
   import { backOut } from 'svelte/easing';
   import { catSvg, type CatPose } from '../art/cats';
@@ -9,60 +9,70 @@
   import type { CatDef } from '../core/level';
   import { LEVELS } from '../levels';
   import Icon from './Icon.svelte';
+  import { ROOMS, roomsOpen, spotFor, type Slot } from './shelterRooms';
 
-  interface Slot {
-    x: string; // CSS left of the cat centre (% of room width, offsets in cqh)
-    y: number; // % of room height (cat feet)
-    size: number; // in cqh
-    pose: CatPose;
-    flip?: boolean;
-    spot: 'bed' | 'rug' | 'cushion' | 'tree' | 'sill' | 'basket' | 'floor';
-  }
-
-  // where rescued cats settle, in order of arrival. Furniture is placed by its
-  // centre in % of the room width and sized by the room height (cqh), so the
-  // room can stretch sideways to fill any screen without breaking the layout.
-  const SLOTS: Slot[] = [
-    { x: '23%', y: 84, size: 20, pose: 'sleep', spot: 'bed' },
-    { x: '50%', y: 80, size: 21, pose: 'play', spot: 'rug' },
-    { x: '82%', y: 34.8, size: 17, pose: 'sit', spot: 'tree', flip: true },
-    { x: 'calc(19.5% - 9cqh)', y: 39.6, size: 16, pose: 'groom', spot: 'sill' },
-    { x: '64%', y: 88, size: 20, pose: 'sleep', spot: 'basket', flip: true },
-    { x: '37%', y: 66, size: 18, pose: 'sit', spot: 'cushion' },
-    { x: '82%', y: 65.4, size: 17, pose: 'curious', spot: 'tree' },
-    { x: '92%', y: 86, size: 19, pose: 'sit', spot: 'floor', flip: true },
-    { x: '7%', y: 90, size: 19, pose: 'curious', spot: 'floor' },
-    { x: '44%', y: 95, size: 19, pose: 'groom', spot: 'floor', flip: true },
-    { x: 'calc(19.5% + 9cqh)', y: 39.6, size: 15, pose: 'sleep', spot: 'sill', flip: true },
-    { x: '11%', y: 71, size: 17, pose: 'sit', spot: 'floor' }, // under the window
-  ];
+  /** kittens curl up smaller than grown cats */
+  const KITTEN = 0.84;
 
   const allCats: (CatDef & { levelTitle: string })[] = LEVELS.flatMap((l) => l.cats.map((c) => ({ ...c, levelTitle: l.title })));
+  // dev only: ?shelterdemo=60 fills the house with that many cats to check the rooms
+  const demo = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('shelterdemo') ?? 0) : 0;
+  const demoCats = Array.from({ length: demo }, (_, i) => {
+    const c = allCats[i % allCats.length];
+    return { ...c, id: `${c.id}~${i}`, look: { ...c.look, kitten: i % 5 === 3 || c.look.kitten } };
+  });
   const rescued = $derived(
-    allCats
-      .filter((c) => app.save.rescued[c.id])
-      .sort((a, b) => app.save.rescued[a.id].rescuedAt - app.save.rescued[b.id].rescuedAt || allCats.indexOf(a) - allCats.indexOf(b)),
+    demo
+      ? demoCats
+      : allCats
+          .filter((c) => app.save.rescued[c.id])
+          .sort((a, b) => app.save.rescued[a.id].rescuedAt - app.save.rescued[b.id].rescuedAt || allCats.indexOf(a) - allCats.indexOf(b)),
   );
+  const rooms = $derived(ROOMS.slice(0, roomsOpen(rescued.length)));
+  const placed = $derived(rescued.map((cat, i) => ({ cat, i, ...spotFor(i) })));
   const fresh = new Set(app.freshCats);
 
   let selected = $state<string | null>(null);
   let happy = $state<Record<string, number>>({});
-  let hearts = $state<{ id: number; x: string; y: number }[]>([]);
+  let hearts = $state<{ id: number; room: number; x: string; y: number }[]>([]);
   let heartId = 0;
   const sel = $derived(selected ? rescued.find((c) => c.id === selected) : undefined);
 
   let wrapEl: HTMLDivElement;
-  onMount(async () => {
-    // a room wider than the screen opens at its middle, where most cats are
-    await tick();
-    if (wrapEl) wrapEl.scrollLeft = (wrapEl.scrollWidth - wrapEl.clientWidth) / 2;
+  let roomEls: HTMLDivElement[] = $state([]);
+  let current = $state(0);
+
+  function scrollToRoom(r: number, smooth = true) {
+    const el = roomEls[r];
+    if (!wrapEl || !el) return;
+    // centre the room (a room wider than the screen opens at its middle, where most cats are)
+    const left = el.offsetLeft + (el.offsetWidth - wrapEl.clientWidth) / 2;
+    wrapEl.scrollTo({ left, behavior: smooth && !app.settings.reducedMotion ? 'smooth' : 'auto' });
+  }
+
+  function onScroll() {
+    if (!wrapEl) return;
+    const mid = wrapEl.scrollLeft + wrapEl.clientWidth / 2;
+    const r = roomEls.findIndex((el) => el && mid >= el.offsetLeft && mid < el.offsetLeft + el.offsetWidth);
+    if (r >= 0) current = r;
+  }
+
+  onMount(() => {
+    // newcomers first: open the room where the freshest cat settled
+    const newest = placed.filter((p) => fresh.has(p.cat.id)).at(-1);
+    current = newest ? newest.room : 0;
+    if (demo) current = Math.min(rooms.length - 1, Number(new URLSearchParams(location.search).get('room') ?? 0));
+    // the observer fires once right away, and again whenever the screen turns or resizes
+    const ro = new ResizeObserver(() => scrollToRoom(current, false));
+    ro.observe(wrapEl);
+    return () => ro.disconnect();
   });
 
   onDestroy(() => {
     app.freshCats = [];
   });
 
-  function pet(id: string, slot: Slot) {
+  function pet(id: string, room: number, slot: Slot) {
     audio.unlock();
     audio.play('purr');
     if (selected !== id) {
@@ -78,7 +88,7 @@
       }
     }, 1200);
     for (let i = 0; i < 4; i++) {
-      const h = { id: ++heartId, x: `calc(${slot.x} + ${((i - 1.5) * 3.4).toFixed(1)}cqh)`, y: slot.y - slot.size * 0.9 };
+      const h = { id: ++heartId, room, x: `calc(${slot.x} + ${((i - 1.5) * 3.4).toFixed(1)}cqh)`, y: slot.y - slot.size * 0.9 };
       hearts = [...hearts, h];
       setTimeout(() => (hearts = hearts.filter((q) => q.id !== h.id)), 1300);
     }
@@ -100,120 +110,71 @@
     <button class="btn small primary" onclick={() => app.go('levels')}><Icon name="paw" size={18} /> Спасать</button>
   </header>
 
-  <div class="room-wrap" bind:this={wrapEl}>
-    <div class="stage">
-      <!-- wall & floor -->
-      <div class="wall"></div>
-      <div class="floor"></div>
-      <div class="baseboard"></div>
+  <div class="rooms">
+    {#if rooms.length > 1}
+      <nav class="tabs" aria-label="Комнаты приюта">
+        {#each rooms as r, ri (r.id)}
+          {@const count = placed.filter((p) => p.room === ri).length}
+          <button class:on={current === ri} onclick={() => scrollToRoom(ri)} aria-current={current === ri}>
+            {r.name}<span>{count}</span>
+          </button>
+        {/each}
+      </nav>
+    {/if}
 
-      <!-- window -->
-      <svg class="window" viewBox="0 0 300 260" aria-hidden="true">
-        <rect x="10" y="10" width="280" height="220" rx="16" fill="#cfe9f1" stroke="#a7795a" stroke-width="12" />
-        <circle cx="220" cy="70" r="28" fill="#fff3c4" />
-        <path d="M22 170 C80 130 140 150 200 140 C240 132 270 150 288 146 V222 H22 Z" fill="#b8d79a" />
-        <path d="M150 16 V226 M16 120 H286" stroke="#a7795a" stroke-width="8" />
-        <path d="M0 0 C40 60 30 160 60 250 L0 250 Z" fill="#f4b9a6" opacity="0.95" />
-        <path d="M300 0 C260 60 270 160 240 250 L300 250 Z" fill="#f4b9a6" opacity="0.95" />
-        <rect x="-6" y="226" width="312" height="22" rx="8" fill="#c9966b" stroke="#8a5f3e" stroke-width="5" />
-      </svg>
-      <!-- picture frame -->
-      <svg class="frame" viewBox="0 0 120 100" aria-hidden="true">
-        <rect x="5" y="5" width="110" height="90" rx="8" fill="#fff6e6" stroke="#c9966b" stroke-width="8" />
-        <path d="M30 70 C30 52 46 44 60 44 C74 44 90 52 90 70 Z" fill="#f2a65a" />
-        <path d="M40 48 L44 30 L54 42 Z M66 42 L76 30 L80 48 Z" fill="#f2a65a" />
-        <circle cx="52" cy="56" r="3" fill="#4c3b3a" /><circle cx="68" cy="56" r="3" fill="#4c3b3a" />
-      </svg>
-      <!-- shelf with plants -->
-      <svg class="shelf" viewBox="0 0 260 120" aria-hidden="true">
-        <rect x="0" y="86" width="260" height="14" rx="6" fill="#c9966b" stroke="#8a5f3e" stroke-width="4" />
-        <path d="M40 86 L46 56 L74 56 L80 86 Z" fill="#e8907a" stroke="#8a5f3e" stroke-width="4" stroke-linejoin="round" />
-        <path d="M60 56 C40 30 46 12 58 6 C60 24 62 36 60 56 M60 56 C76 34 90 32 96 38 C82 42 72 48 60 56" fill="#8cbc69" stroke="#4e7a45" stroke-width="3" />
-        <rect x="120" y="50" width="34" height="36" rx="4" fill="#8fd0b4" stroke="#8a5f3e" stroke-width="4" />
-        <rect x="158" y="40" width="26" height="46" rx="4" fill="#f2c46d" stroke="#8a5f3e" stroke-width="4" />
-        <path d="M206 86 L210 64 L234 64 L238 86 Z" fill="#a9d6e8" stroke="#8a5f3e" stroke-width="4" stroke-linejoin="round" />
-        <circle cx="222" cy="54" r="14" fill="#f7b2c0" stroke="#d86f7a" stroke-width="3" />
-      </svg>
-      <!-- cat tree -->
-      <svg class="tree" viewBox="0 0 200 520" aria-hidden="true">
-        <rect x="88" y="90" width="26" height="420" rx="10" fill="#e9d3a6" stroke="#8a5f3e" stroke-width="5" />
-        {#each [150, 230, 310, 390, 470] as y}<path d="M88 {y} H114" stroke="#c9b083" stroke-width="3" />{/each}
-        <ellipse cx="100" cy="96" rx="80" ry="22" fill="#c4b5ef" stroke="#8a5f3e" stroke-width="5" />
-        <ellipse cx="100" cy="338" rx="72" ry="20" fill="#c4b5ef" stroke="#8a5f3e" stroke-width="5" />
-        <rect x="20" y="490" width="160" height="26" rx="12" fill="#c4b5ef" stroke="#8a5f3e" stroke-width="5" />
-        <circle cx="40" cy="380" r="9" fill="#f48fb1" stroke="#8a5f3e" stroke-width="3" /><path d="M40 338 V371" stroke="#8a5f3e" stroke-width="2" />
-      </svg>
-      <!-- rug -->
-      <svg class="rug" viewBox="0 0 400 120" aria-hidden="true">
-        <ellipse cx="200" cy="60" rx="196" ry="56" fill="#f6c7a4" stroke="#d9946b" stroke-width="6" />
-        <ellipse cx="200" cy="60" rx="150" ry="40" fill="none" stroke="#fde3c6" stroke-width="10" />
-        <ellipse cx="200" cy="60" rx="96" ry="24" fill="none" stroke="#f2a65a" stroke-width="6" stroke-dasharray="14 10" />
-      </svg>
-      <!-- beds -->
-      <svg class="bed b1" viewBox="0 0 240 110" aria-hidden="true">
-        <ellipse cx="120" cy="70" rx="116" ry="38" fill="#8fd0b4" stroke="#4fa786" stroke-width="6" />
-        <ellipse cx="120" cy="62" rx="88" ry="24" fill="#dcf3e8" />
-      </svg>
-      <svg class="bed basket" viewBox="0 0 240 120" aria-hidden="true">
-        <path d="M14 50 C20 110 220 110 226 50 Z" fill="#d9a46b" stroke="#8a5f3e" stroke-width="6" stroke-linejoin="round" />
-        {#each [40, 70, 100, 130, 160, 190] as x}<path d="M{x} 56 L{x + 6} 96" stroke="#b9844f" stroke-width="4" />{/each}
-        <ellipse cx="120" cy="50" rx="108" ry="22" fill="#f6e7d3" stroke="#8a5f3e" stroke-width="6" />
-      </svg>
-      <svg class="bed cushion" viewBox="0 0 200 80" aria-hidden="true">
-        <ellipse cx="100" cy="46" rx="94" ry="28" fill="#f29aa3" stroke="#d86f7a" stroke-width="6" />
-        <ellipse cx="100" cy="40" rx="66" ry="14" fill="#fde5e7" />
-      </svg>
-      <!-- bowls & toys -->
-      <svg class="bowls" viewBox="0 0 180 60" aria-hidden="true">
-        <ellipse cx="45" cy="38" rx="38" ry="14" fill="#6fa3c9" stroke="#4c3b3a" stroke-width="4" />
-        <ellipse cx="45" cy="32" rx="30" ry="9" fill="#b9845a" />
-        <ellipse cx="135" cy="38" rx="38" ry="14" fill="#f2a65a" stroke="#4c3b3a" stroke-width="4" />
-        <ellipse cx="135" cy="32" rx="30" ry="9" fill="#bfe3ee" />
-      </svg>
-      <svg class="yarn" viewBox="0 0 80 60" aria-hidden="true">
-        <circle cx="30" cy="30" r="22" fill="#f48fb1" stroke="#4c3b3a" stroke-width="4" />
-        <path d="M14 24 q16 -12 32 4 M12 34 q18 -8 34 6" stroke="#fbc6d8" stroke-width="3" fill="none" />
-        <path d="M50 42 q20 10 26 -6" stroke="#4c3b3a" stroke-width="3" fill="none" />
-      </svg>
+  <div class="room-wrap" bind:this={wrapEl} onscroll={onScroll}>
+    <div class="house">
+      {#each rooms as room, ri (room.id)}
+        <div class="stage" bind:this={roomEls[ri]} style:--wall={room.wall} style:--floor={room.floor} style:--board={room.baseboard ?? '#fff4e4'}>
+          <div class="wall"></div>
+          <div class="floor"></div>
+          <div class="baseboard"></div>
+          {#if ri > 0}<div class="doorway" aria-hidden="true"></div>{/if}
 
-      <!-- cats -->
-      {#each rescued as cat, i (cat.id)}
-        {@const slot = SLOTS[i % SLOTS.length]}
-        {@const pose = poseOf(cat.id, slot)}
-        <button
-          class="cat pose-{pose}"
-          class:sel={selected === cat.id}
-          class:flip={slot.flip}
-          style:left={slot.x}
-          style:top="{slot.y}%"
-          style:--size="{slot.size}cqh"
-          style:--delay="{-i * 0.7}s"
-          onclick={() => pet(cat.id, slot)}
-          aria-label="{cat.name} — погладить"
-          in:scale={{ delay: 120 + i * 90, duration: 420, easing: backOut, start: 0.6 }}
-        >
-          {@html catSvg(cat.look, pose, { size: 128, uid: `sh${cat.id}${pose}`, hooks: true })}
-          {#if fresh.has(cat.id)}<span class="new">Новенький!</span>{/if}
-          {#if selected === cat.id}<span class="tag">{cat.name}</span>{/if}
-        </button>
-      {/each}
+          {#each room.decor as d}
+            <div class="decor" style:left={d.x} style:top="{d.y}%" style:height="{d.h}cqh" style:width={d.w} style:aspect-ratio={d.w ? null : d.ar}>{@html d.svg}</div>
+          {/each}
 
-      {#each hearts as h (h.id)}
-        <span class="heart" style:left={h.x} style:top="{h.y}%"><Icon name="heart" size={26} /></span>
-      {/each}
+          {#each placed.filter((p) => p.room === ri) as { cat, i, slot } (cat.id)}
+            {@const pose = poseOf(cat.id, slot)}
+            <button
+              class="cat pose-{pose}"
+              class:sel={selected === cat.id}
+              class:flip={slot.flip}
+              style:left={slot.x}
+              style:top="{slot.y}%"
+              style:--size="{slot.size * (cat.look.kitten ? KITTEN : 1)}cqh"
+              style:--delay="{-i * 0.7}s"
+              onclick={() => pet(cat.id, ri, slot)}
+              aria-label="{cat.name} — погладить"
+              in:scale={{ delay: 120 + (i % 12) * 90, duration: 420, easing: backOut, start: 0.6 }}
+            >
+              {@html catSvg(cat.look, pose, { size: 128, uid: `sh${cat.id}${pose}`, hooks: true })}
+              {#if fresh.has(cat.id)}<span class="new">{cat.look.kitten ? 'Малыш!' : 'Новенький!'}</span>{/if}
+              {#if selected === cat.id}<span class="tag">{cat.name}</span>{/if}
+            </button>
+          {/each}
 
-      {#if rescued.length === 0}
-        <div class="empty card" in:fly={{ y: 20 }}>
-          <h2>Здесь пока тихо…</h2>
-          <p>Лежанки уже взбиты, миски наполнены. Спасите первого котика — и он появится здесь.</p>
-          <button class="btn primary" onclick={() => app.play(app.nextToPlay())}><Icon name="play" /> К спасению</button>
+          {#each hearts.filter((h) => h.room === ri) as h (h.id)}
+            <span class="heart" style:left={h.x} style:top="{h.y}%"><Icon name="heart" size={26} /></span>
+          {/each}
+
+          {#if rescued.length === 0}
+            <div class="empty card" in:fly={{ y: 20 }}>
+              <h2>Здесь пока тихо…</h2>
+              <p>Лежанки уже взбиты, миски наполнены. Спасите первого котика — и он появится здесь.</p>
+              <button class="btn primary" onclick={() => app.play(app.nextToPlay())}><Icon name="play" /> К спасению</button>
+            </div>
+          {/if}
         </div>
-      {/if}
+      {/each}
     </div>
+  </div>
   </div>
 
   {#if sel}
     {#key sel.id}
+      {@const spot = placed.find((p) => p.cat.id === sel.id)}
       <aside class="card-sheet card" in:fly={{ y: 30, duration: 260, easing: backOut }}>
         <button class="close" onclick={() => (selected = null)} aria-label="Закрыть"><Icon name="close" size={18} /></button>
         <div class="row">
@@ -232,9 +193,11 @@
         </div>
         <div class="pet-row">
           <span class="pets"><Icon name="heart" size={18} /> Поглажено: {app.save.rescued[sel.id]?.pets ?? 0}</span>
-          <button class="btn small rose" onclick={() => pet(sel.id, SLOTS[rescued.findIndex((c) => c.id === sel.id) % SLOTS.length])}>
-            <Icon name="paw" size={18} /> Погладить
-          </button>
+          {#if spot}
+            <button class="btn small rose" onclick={() => pet(sel.id, spot.room, spot.slot)}>
+              <Icon name="paw" size={18} /> Погладить
+            </button>
+          {/if}
         </div>
       </aside>
     {/key}
@@ -271,6 +234,12 @@
     color: var(--ink-soft);
     font-size: 14px;
   }
+  .rooms {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
   .room-wrap {
     flex: 1;
     min-height: 0;
@@ -281,30 +250,30 @@
     overscroll-behavior-x: contain;
     container-type: size;
   }
-  /* the room always fills the width; narrow screens get a wider-than-screen
+  .house {
+    display: flex;
+    height: 100%;
+    width: max-content;
+  }
+  /* each room always fills the width; narrow screens get a wider-than-screen
      room that scrolls sideways instead of empty margins */
   .stage {
     position: relative;
+    flex-shrink: 0;
     height: 100%;
-    width: max(100%, 158cqh);
+    width: max(100cqw, 158cqh);
     container-type: size;
     overflow: hidden;
   }
   .wall {
     position: absolute;
     inset: 0 0 38% 0;
-    background:
-      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.35) 0 22px, transparent 22px 60px),
-      radial-gradient(circle at 30px 30px, rgba(242, 166, 90, 0.18) 3px, transparent 4px) 0 0 / 60px 60px,
-      linear-gradient(180deg, #fbe9d3, #f6dcbd);
+    background: var(--wall);
   }
   .floor {
     position: absolute;
     inset: 62% 0 0 0;
-    background:
-      repeating-linear-gradient(0deg, rgba(120, 80, 50, 0.16) 0 3px, transparent 3px 46px),
-      repeating-linear-gradient(90deg, transparent 0 160px, rgba(120, 80, 50, 0.12) 160px 163px),
-      linear-gradient(180deg, #d9a979, #c99366);
+    background: var(--floor);
   }
   .baseboard {
     position: absolute;
@@ -312,74 +281,78 @@
     right: 0;
     top: 60.5%;
     height: 2.4%;
-    background: #fff4e4;
+    background: var(--board);
     border-top: 3px solid #e8cfae;
     border-bottom: 3px solid #b98a62;
   }
-  svg {
+  /* a soft door frame where one room flows into the next */
+  .doorway {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2.2cqh;
+    background: linear-gradient(90deg, #b98a62, #d9b48c 40%, #f3dfc6);
+    box-shadow: 4px 0 10px rgba(90, 60, 40, 0.18);
+    z-index: 1;
+  }
+  .decor {
     position: absolute;
     translate: -50% 0;
-    width: auto;
   }
-  .window {
-    left: 19.5%;
-    top: 9%;
-    height: 34.2cqh;
-    aspect-ratio: 300 / 260;
+  .decor :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
   }
-  .frame {
-    left: 44.5%;
-    top: 14%;
-    height: 11.8cqh;
-    aspect-ratio: 120 / 100;
-  }
-  .shelf {
-    left: 62%;
-    top: 22%;
-    height: 14.6cqh;
-    aspect-ratio: 260 / 120;
-  }
-  .tree {
-    left: 82%;
-    top: 22%;
-    height: 66cqh;
-    aspect-ratio: 200 / 520;
-  }
-  .rug {
+  .tabs {
+    position: absolute;
     left: 50%;
-    top: 70%;
-    height: 17cqh;
-    aspect-ratio: 400 / 120;
+    top: 10px;
+    translate: -50% 0;
+    z-index: 4;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 99px;
+    background: rgba(255, 250, 243, 0.9);
+    box-shadow: var(--shadow-sm);
+    max-width: calc(100% - 20px);
+    overflow-x: auto;
+    scrollbar-width: none;
   }
-  .bed.b1 {
-    left: 23%;
-    top: 75%;
-    height: 15.9cqh;
-    aspect-ratio: 240 / 110;
+  .tabs::-webkit-scrollbar {
+    display: none;
   }
-  .bed.basket {
-    left: 64%;
-    top: 79%;
-    height: 16.6cqh;
-    aspect-ratio: 240 / 120;
+  .tabs button {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 99px;
+    font-weight: 800;
+    font-size: 14px;
+    color: var(--ink-soft);
+    transition: background 0.15s;
   }
-  .bed.cushion {
-    left: 37%;
-    top: 61%;
-    height: 10.1cqh;
-    aspect-ratio: 200 / 80;
+  .tabs button span {
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 99px;
+    font-size: 12px;
+    background: #f3e4d0;
+    color: var(--ink-faint);
   }
-  .bowls {
-    left: 92.5%;
-    top: 92%;
-    height: 6.8cqh;
-    aspect-ratio: 180 / 60;
+  .tabs button.on {
+    color: #fff;
+    background: var(--orange);
+    box-shadow: 0 2px 0 var(--orange-dark);
   }
-  .yarn {
-    left: 62.5%;
-    top: 70%;
-    height: 5.9cqh;
-    aspect-ratio: 80 / 60;
+  .tabs button.on span {
+    background: rgba(255, 255, 255, 0.3);
+    color: #fff;
   }
   .cat {
     position: absolute;
@@ -670,6 +643,24 @@
   }
   /* phone held sideways: the header floats over the room so the room gets the full height */
   @media (max-height: 500px) and (orientation: landscape) {
+    .tabs {
+      top: auto;
+      bottom: calc(8px + var(--safe-bottom));
+    }
+    .tabs {
+      left: auto;
+      right: calc(10px + var(--safe-right));
+      translate: none;
+      gap: 2px;
+      padding: 3px;
+    }
+    .tabs button {
+      padding: 4px 9px;
+      font-size: 12.5px;
+    }
+    .tabs button span {
+      display: none;
+    }
     header {
       position: absolute;
       top: 0;

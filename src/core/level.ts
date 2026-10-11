@@ -31,6 +31,10 @@ export interface CatDef {
   pace?: number;
   /** ignores new food closer than N cells (default 0) */
   minNotice?: number;
+  /** eats only its preferredFood */
+  picky?: boolean;
+  /** a kitten: keeps within 2 cells of this cat (its mother) */
+  follows?: string;
   patrol?: XY[];
   home?: XY;
   look: CatLook;
@@ -101,7 +105,7 @@ export interface LevelDef {
   order: number;
   title: string;
   subtitle: string;
-  location: 'yard' | 'park' | 'garages' | 'garden';
+  location: 'yard' | 'park' | 'garages' | 'garden' | 'market' | 'dacha' | 'quay';
   description: string;
   /** rows of the map, one char per cell — see LEGEND */
   map: string[];
@@ -175,6 +179,8 @@ export function validateLevel(def: LevelDef): string[] {
     }
     if (c.pace !== undefined && (!Number.isInteger(c.pace) || c.pace < 1 || c.pace > 3)) errors.push(`cat ${c.id} pace must be 1..3`);
     if (c.minNotice !== undefined && (!Number.isInteger(c.minNotice) || c.minNotice < 0 || c.minNotice > 4)) errors.push(`cat ${c.id} minNotice must be 0..4`);
+    if (c.picky && !c.preferredFood) errors.push(`picky cat ${c.id} needs a preferredFood`);
+    if (c.follows !== undefined && (c.follows === c.id || !def.cats.some((k) => k.id === c.follows))) errors.push(`cat ${c.id} follows unknown cat '${c.follows}'`);
     occupied.add(c.pos.join(','));
     for (const p of c.patrol ?? []) if (!inBounds(xy(p), w, h) || isSolidChar(p)) errors.push(`cat ${c.id} patrol point ${p} invalid`);
   }
@@ -256,6 +262,8 @@ export function createInitialState(def: LevelDef): GameState {
     pace: c.pace ?? 1,
     cooldown: 0,
     minNotice: c.minNotice ?? 0,
+    picky: !!c.picky,
+    follows: c.follows ?? null,
   }));
   const inventory = { ...emptyInventory(), ...def.inventory };
   return {
