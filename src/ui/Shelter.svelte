@@ -34,6 +34,7 @@
     { x: '7%', y: 90, size: 19, pose: 'curious', spot: 'floor' },
     { x: '44%', y: 95, size: 19, pose: 'groom', spot: 'floor', flip: true },
     { x: 'calc(19.5% + 9cqh)', y: 39.6, size: 15, pose: 'sleep', spot: 'sill', flip: true },
+    { x: '11%', y: 71, size: 17, pose: 'sit', spot: 'floor' }, // under the window
   ];
 
   const allCats: (CatDef & { levelTitle: string })[] = LEVELS.flatMap((l) => l.cats.map((c) => ({ ...c, levelTitle: l.title })));

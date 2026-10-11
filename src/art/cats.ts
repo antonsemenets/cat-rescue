@@ -49,6 +49,8 @@ interface PoseDef {
   front?: Shape[];
   /** horizontal shift so the pose fits the 128px box */
   dx?: number;
+  /** index in `near` of the near front leg (left out for three-legged cats) */
+  nearFront?: number;
 }
 
 const e = (cx: number, cy: number, rx: number, ry: number, rot?: number): Shape => ({ t: 'e', cx, cy, rx, ry, rot });
@@ -72,6 +74,7 @@ const SIT_TAIL = { d: 'M44 107 C30 115 15 109 17 95 C18 87 25 85 28 91', w: 9 };
 
 const POSES: Record<CatPose, PoseDef> = {
   sit: {
+    nearFront: 0,
     far: [cap(75, 92, 77, 112, 4.6)],
     near: [cap(66, 92, 66, 112, 5), e(42, 112, 9, 4)],
     body: SIT_BODY,
@@ -84,6 +87,7 @@ const POSES: Record<CatPose, PoseDef> = {
     paws: [e(66, 112, 6, 4), e(77, 112, 5.5, 3.8), e(42, 112, 9, 4)],
   },
   stand: {
+    nearFront: 1,
     far: [cap(42, 92, 43, 112, 4.5), cap(80, 92, 81, 112, 4.5)],
     near: [cap(48, 92, 48, 112, 5), cap(86, 92, 86, 112, 5)],
     body: [e(62, 86, 30, 16)],
@@ -96,6 +100,7 @@ const POSES: Record<CatPose, PoseDef> = {
     paws: [e(48, 112, 6, 4), e(86, 112, 6, 4), e(43, 112, 5.5, 3.8), e(81, 112, 5.5, 3.8)],
   },
   walk1: {
+    nearFront: 1,
     far: [cap(40, 92, 46, 112, 4.5), cap(80, 92, 74, 112, 4.5)],
     near: [cap(50, 92, 42, 112, 5), cap(86, 92, 94, 112, 5)],
     body: [e(62, 85, 30, 16)],
@@ -108,6 +113,7 @@ const POSES: Record<CatPose, PoseDef> = {
     paws: [e(42, 112, 6, 4), e(94, 112, 6, 4), e(46, 112, 5.5, 3.8), e(74, 112, 5.5, 3.8)],
   },
   walk2: {
+    nearFront: 1,
     far: [cap(40, 92, 34, 112, 4.5), cap(80, 92, 88, 112, 4.5)],
     near: [cap(50, 92, 56, 112, 5), cap(86, 92, 80, 112, 5)],
     body: [e(62, 87, 30, 16)],
@@ -120,6 +126,7 @@ const POSES: Record<CatPose, PoseDef> = {
     paws: [e(56, 112, 6, 4), e(80, 112, 6, 4), e(34, 112, 5.5, 3.8), e(88, 112, 5.5, 3.8)],
   },
   eat: {
+    nearFront: 1,
     far: [cap(38, 94, 39, 112, 4.5), cap(76, 96, 78, 112, 4.5)],
     near: [cap(44, 94, 44, 112, 5), cap(82, 96, 84, 112, 5)],
     body: [e(57, 90, 30, 15, 9)],
@@ -132,6 +139,7 @@ const POSES: Record<CatPose, PoseDef> = {
     paws: [e(44, 112, 6, 4), e(84, 112, 6, 4), e(39, 112, 5.5, 3.8), e(78, 112, 5.5, 3.8)],
   },
   curious: {
+    nearFront: 0,
     far: [cap(75, 92, 77, 112, 4.6)],
     near: [cap(66, 92, 66, 112, 5), e(42, 112, 9, 4)],
     body: SIT_BODY,
@@ -144,6 +152,7 @@ const POSES: Record<CatPose, PoseDef> = {
     paws: [e(66, 112, 6, 4), e(77, 112, 5.5, 3.8), e(42, 112, 9, 4)],
   },
   scared: {
+    nearFront: 1,
     far: [cap(38, 94, 35, 113, 4.4), cap(86, 92, 89, 113, 4.4)],
     near: [cap(44, 94, 43, 114, 5), cap(92, 92, 95, 114, 5)],
     body: [p('M30 100 C27 70 50 55 65 56 C82 58 95 72 95 98 C82 88 46 88 30 100 Z')],
@@ -157,6 +166,7 @@ const POSES: Record<CatPose, PoseDef> = {
     dx: -12,
   },
   hide: {
+    nearFront: 0,
     far: [],
     near: [e(84, 112, 8, 4), e(42, 112, 8, 3.5)],
     body: [e(60, 103, 32, 12)],
@@ -170,6 +180,7 @@ const POSES: Record<CatPose, PoseDef> = {
     dx: -8,
   },
   sleep: {
+    nearFront: 0,
     far: [],
     near: [e(76, 112, 9, 4)],
     body: [e(61, 99, 36, 17)],
@@ -196,6 +207,7 @@ const POSES: Record<CatPose, PoseDef> = {
     front: [cap(66, 94, 80, 73, 5)],
   },
   play: {
+    nearFront: 1,
     far: [cap(40, 82, 42, 112, 4.5), cap(80, 98, 92, 112, 4.5)],
     near: [cap(46, 84, 46, 112, 5), cap(84, 100, 99, 112, 5)],
     body: [e(61, 88, 30, 15, 14)],
@@ -274,8 +286,14 @@ export interface CatSvgOptions {
 
 let uidCounter = 0;
 
+function threeLegged(P: PoseDef): PoseDef {
+  const near = P.nearFront === undefined ? P.near : P.near.filter((_, i) => i !== P.nearFront);
+  // grooming normally lifts the near front paw — without it the cat just tilts its head
+  return { ...P, near, front: undefined };
+}
+
 export function catSvg(look: CatLook, pose: CatPose, opts: CatSvgOptions = {}): string {
-  const P = POSES[pose];
+  const P = look.legs === 3 ? threeLegged(POSES[pose]) : POSES[pose];
   const size = opts.size ?? 128;
   const id = opts.uid ?? `cat${++uidCounter}`;
   const base = look.base;
@@ -302,7 +320,7 @@ export function catSvg(look: CatLook, pose: CatPose, opts: CatSvgOptions = {}): 
     P.tail ? `<path d="${P.tail.d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="${cap}" stroke-linejoin="round" ${extra}/>` : '';
 
   // ---- tail -----------------------------------------------------------------
-  const tailColor = pattern === 'siamese' ? points : base;
+  const tailColor = pattern === 'siamese' || pattern === 'bicolor' ? points : base;
   let tail = '';
   if (P.tail) {
     tail += tailStroke(P.tail.w + ow * 2, outline);
@@ -315,10 +333,12 @@ export function catSvg(look: CatLook, pose: CatPose, opts: CatSvgOptions = {}): 
 
   // ---- ears -------------------------------------------------------------------
   const earColor = pattern === 'siamese' ? points : base;
+  // bicolor: the ear on the spotted side is black
+  const earFill = (i: number) => (pattern === 'bicolor' && i === 0 ? accent : earColor);
   const innerEar = dark ? '#c98d93' : '#f3a7a5';
   const ears =
     earsT.map((t) => `<path d="${triPath(t)}" fill="${outline}" stroke="${outline}" stroke-width="${ow * 2}" stroke-linejoin="round"/>`).join('') +
-    earsT.map((t) => `<path d="${triPath(t)}" fill="${earColor}" stroke="${earColor}" stroke-width="2.5" stroke-linejoin="round"/>`).join('') +
+    earsT.map((t, i) => `<path d="${triPath(t)}" fill="${earFill(i)}" stroke="${earFill(i)}" stroke-width="2.5" stroke-linejoin="round"/>`).join('') +
     earsT.map((t) => `<path d="${triPath(innerTri(t))}" fill="${innerEar}" stroke="${innerEar}" stroke-width="1.5" stroke-linejoin="round"/>`).join('');
 
   // ---- patterns on body ------------------------------------------------------
@@ -342,6 +362,11 @@ export function catSvg(look: CatLook, pose: CatPose, opts: CatSvgOptions = {}): 
     case 'calico':
       bodyPattern += fills(P.patchA, accent) + fills(P.patchB, points);
       headPattern += `<ellipse cx="${cx - 13}" cy="${cy - 9}" rx="13" ry="11" fill="${accent}"/><ellipse cx="${cx + 17}" cy="${cy - 12}" rx="9" ry="8" fill="${points}"/>`;
+      break;
+    case 'bicolor':
+      // white cat with black spots on the back and the head
+      bodyPattern += fills(P.patchA, accent) + fills(P.patchB, accent);
+      headPattern += `<ellipse cx="${cx - 12}" cy="${cy - 10}" rx="14" ry="11" fill="${accent}"/><ellipse cx="${cx + 14}" cy="${cy - 15}" rx="6" ry="4.5" fill="${accent}"/>`;
       break;
     case 'siamese':
       bodyPattern += fills(P.paws, points);

@@ -42,6 +42,7 @@ export function catStatus(cat: Cat, s: GameState): string {
     case 'cautious':
       return 'Осторожничает у входа — доверие растёт';
     case 'interested': {
+      if (cat.activity === 'rest') return 'Идёт к цели в своём темпе — переводит дух';
       if (cat.target?.kind === 'toy') return cat.activity === 'play' ? 'Играет с игрушкой' : 'Бежит к игрушке';
       if (cat.target?.id?.startsWith('bait:')) return 'Идёт к приманке в ловушке';
       if (cat.target?.kind === 'food') return 'Почуяв еду, идёт к ней';
@@ -50,6 +51,7 @@ export function catStatus(cat: Cat, s: GameState): string {
     default:
       if (cat.activity === 'sleep') return cat.hunger === 0 ? 'Живот полон — можно и вздремнуть' : 'Дремлет';
       if (cat.activity === 'groom') return 'Умывается';
+      if (cat.activity === 'rest') return 'Переводит дух между шагами';
       if (cat.target?.kind === 'patrol') return 'Обходит свою территорию';
       if (cat.target?.kind === 'home') return 'Возвращается на любимое место';
       void s;
@@ -62,7 +64,9 @@ export function catSenses(cat: Cat): string[] {
   const k = foodNoticeRadius(cat, 'kibble');
   const t = foodNoticeRadius(cat, 'tuna');
   if (k < 0) out.push('Еда сейчас совсем не интересует');
+  else if (cat.minNotice > 0) out.push(`Сам находит еду в ${cat.minNotice}–${k} клетках (тунец — до ${t}). Ближе — подачка, её он не замечает`);
   else out.push(`Чует корм за ${cellsWord(k)}, тунец — за ${cellsWord(t)}`);
+  if (cat.pace > 1) out.push(`Ходит не спеша: шаг раз в ${cat.pace} ${plural(cat.pace, 'ход', 'хода', 'ходов')}`);
   const toy = toyNoticeRadius(cat);
   if (toy > 0) out.push(`Замечает игрушку за ${cellsWord(toy)}`);
   if (cat.fear >= 3) out.push('Никогда не выходит из тени');

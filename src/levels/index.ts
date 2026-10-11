@@ -8,8 +8,9 @@ import l5 from './l5.json';
 import l6 from './l6.json';
 import l7 from './l7.json';
 import l8 from './l8.json';
+import l9 from './l9.json';
 
-export const LEVELS: LevelDef[] = ([l1, l2, l3, l4, l5, l6, l7, l8] as unknown as LevelDef[]).sort((a, b) => a.order - b.order);
+export const LEVELS: LevelDef[] = ([l1, l2, l3, l4, l5, l6, l7, l8, l9] as unknown as LevelDef[]).sort((a, b) => a.order - b.order);
 
 export function levelById(id: string): LevelDef | undefined {
   return LEVELS.find((l) => l.id === id);

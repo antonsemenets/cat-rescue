@@ -27,6 +27,10 @@ export interface CatDef {
   pos: XY;
   traits: CatTraits;
   preferredFood?: FoodKind | null;
+  /** one step every N turns (default 1) */
+  pace?: number;
+  /** ignores new food closer than N cells (default 0) */
+  minNotice?: number;
   patrol?: XY[];
   home?: XY;
   look: CatLook;
@@ -169,6 +173,8 @@ export function validateLevel(def: LevelDef): string[] {
       const v = c.traits[k];
       if (!Number.isInteger(v) || v < 0 || v > 3) errors.push(`cat ${c.id} ${k}=${v} must be 0..3`);
     }
+    if (c.pace !== undefined && (!Number.isInteger(c.pace) || c.pace < 1 || c.pace > 3)) errors.push(`cat ${c.id} pace must be 1..3`);
+    if (c.minNotice !== undefined && (!Number.isInteger(c.minNotice) || c.minNotice < 0 || c.minNotice > 4)) errors.push(`cat ${c.id} minNotice must be 0..4`);
     occupied.add(c.pos.join(','));
     for (const p of c.patrol ?? []) if (!inBounds(xy(p), w, h) || isSolidChar(p)) errors.push(`cat ${c.id} patrol point ${p} invalid`);
   }
@@ -247,6 +253,9 @@ export function createInitialState(def: LevelDef): GameState {
     homeArea: null,
     trappedIn: null,
     required: c.required !== false,
+    pace: c.pace ?? 1,
+    cooldown: 0,
+    minNotice: c.minNotice ?? 0,
   }));
   const inventory = { ...emptyInventory(), ...def.inventory };
   return {

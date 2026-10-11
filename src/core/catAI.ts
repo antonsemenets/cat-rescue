@@ -116,7 +116,9 @@ function evaluateCandidates(snap: Snapshot, cat: Cat, map: CostMap): Candidate[]
     for (const f of foodSpots(s)) {
       // once a cat has smelled its target it keeps going for it (no flip-flopping at the radius edge)
       const committed = cat.target?.id === f.id;
-      if (!committed && manhattan(cat.pos, f.cell) > foodNoticeRadius(cat, f.kind)) continue;
+      const dist = manhattan(cat.pos, f.cell);
+      // an independent cat ignores handouts pushed right under its nose
+      if (!committed && (dist > foodNoticeRadius(cat, f.kind) || dist < cat.minNotice)) continue;
       const cost = costTo(map, f.cell);
       if (!Number.isFinite(cost)) continue;
       let u: number = RULES.foodBase + RULES.foodPerHunger * cat.hunger;
@@ -376,7 +378,13 @@ function sideStep(snap: Snapshot, cat: Cat): Cell | null {
 
 /** Intents of all cats from one snapshot — order independent. */
 export function decideAll(snap: Snapshot): Intent[] {
-  return snap.s.cats.map((c) => decideCat(snap, c));
+  return snap.s.cats.map((c) => restIfTired(c, decideCat(snap, c)));
+}
+
+/** A slow cat (pace > 1) keeps its plan but catches its breath between steps. */
+export function restIfTired(cat: Cat, it: Intent): Intent {
+  if (cat.mode === 'trapped' || cat.cooldown <= 0 || !it.move) return it;
+  return { ...it, move: null, activity: 'rest', emotes: it.emotes };
 }
 
 /** Preview helper: what each cat currently plans to do. */

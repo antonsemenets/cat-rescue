@@ -262,7 +262,11 @@ export class GameSession {
       case 'tuna': {
         const a: Action = { type: 'placeFood', kind: this.tool as FoodKind, cell };
         const v = validateAction(s, a);
-        return v.ok ? { action: a, info: trapAt(s, cell) ? 'Положить приманку в ловушку' : 'Положить на землю' } : { action: null, reason: v.reason };
+        if (!v.ok) return { action: null, reason: v.reason };
+        const spot = trapAt(s, cell)?.trap.back ?? cell;
+        const proud = s.cats.find((c) => c.mode !== 'trapped' && c.minNotice > 0 && manhattan(c.pos, spot) < c.minNotice);
+        if (proud) return { action: a, info: `Слишком близко: ${proud.name} не берёт подачки — он заметит еду только издалека` };
+        return { action: a, info: trapAt(s, cell) ? 'Положить приманку в ловушку' : 'Положить на землю' };
       }
       case 'box': {
         const a: Action = { type: 'placeBox', cell };
@@ -687,7 +691,8 @@ export class GameSession {
     }
     const kind: FoodKind = t === 'tuna' ? 'tuna' : 'kibble';
     const r = foodNoticeRadius(cat, kind);
-    if (r > 0) zones.push({ cells: cells.filter((c) => manhattan(c, cat.pos) <= r), color: this.catColor(cat.id), alpha: 0.2 });
+    // an independent cat notices food only in a ring: not too close, not too far
+    if (r > 0) zones.push({ cells: cells.filter((c) => manhattan(c, cat.pos) <= r && manhattan(c, cat.pos) >= cat.minNotice), color: this.catColor(cat.id), alpha: 0.2 });
     return zones;
   }
 }

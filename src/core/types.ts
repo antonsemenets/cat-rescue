@@ -40,9 +40,10 @@ export type CatActivity =
   | 'scared'
   | 'hide'
   | 'hesitate'
+  | 'rest'
   | 'trapped';
 
-export type CatPattern = 'solid' | 'tabby' | 'tuxedo' | 'calico' | 'siamese';
+export type CatPattern = 'solid' | 'tabby' | 'tuxedo' | 'calico' | 'siamese' | 'bicolor';
 
 export interface CatLook {
   pattern: CatPattern;
@@ -50,6 +51,8 @@ export interface CatLook {
   accent: string;
   stripe: string;
   eyes: string;
+  /** 3 = drawn without the near front leg */
+  legs?: 3 | 4;
 }
 
 export interface CatTraits {
@@ -88,6 +91,12 @@ export interface Cat {
   homeArea: { x: number; y: number; w: number; h: number } | null;
   trappedIn: string | null;
   required: boolean;
+  /** takes one step every `pace` turns (a three-legged cat walks slower) */
+  pace: number;
+  /** turns left to rest before the next step */
+  cooldown: number;
+  /** does not notice new food closer than this (an independent cat dislikes handouts) */
+  minNotice: number;
 }
 
 export interface Trap {

@@ -142,3 +142,33 @@ describe('cat AI — fear', () => {
     expect(catOf(s, 'a').mode).toBe('trapped');
   });
 });
+
+describe('cat AI — special traits', () => {
+  const MAP = ['.......', '.......', '.......', '.......', '.......'];
+
+  it('a slow cat (pace 2) steps only every second turn', () => {
+    let s = state({ map: MAP, cats: [catDef('slow', [0, 2], { hunger: 0 }, { patrol: [[0, 2], [6, 2]], pace: 2 })] });
+    const xs: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      s = step(s, { type: 'wait' }).state;
+      xs.push(catOf(s, 'slow').pos.x);
+    }
+    expect(xs).toEqual([1, 1, 2, 2, 3, 3]);
+    expect(catOf(s, 'slow').activity).toBe('rest');
+  });
+
+  it('an independent cat ignores food pushed under its nose but finds it from afar', () => {
+    const near = state({ map: MAP, cats: [catDef('proud', [3, 2], { hunger: 2 }, { minNotice: 3 })] });
+    near.foods.push({ id: 'f', kind: 'kibble', cell: { x: 4, y: 2 }, ttl: 9 });
+    expect(planIntents(near)[0].target?.kind).not.toBe('food');
+
+    const far = state({ map: MAP, cats: [catDef('proud', [0, 2], { hunger: 2 }, { minNotice: 3 })] });
+    far.foods.push({ id: 'f', kind: 'kibble', cell: { x: 3, y: 2 }, ttl: 9 });
+    expect(planIntents(far)[0].target?.id).toBe('f');
+    // once noticed it keeps going even when it gets close
+    let s = step(far, { type: 'wait' }).state;
+    expect(catOf(s, 'proud').target?.id).toBe('f');
+    s = step(s, { type: 'wait' }).state;
+    expect(catOf(s, 'proud').target?.id).toBe('f');
+  });
+});

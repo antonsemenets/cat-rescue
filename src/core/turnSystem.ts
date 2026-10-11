@@ -152,6 +152,10 @@ export function runTurn(prev: GameState, action: Action): TurnResult | { error: 
 
   // 7. timers
   ageItems(s, events);
+  for (const cat of s.cats) {
+    if (moved.has(cat.id)) cat.cooldown = Math.max(0, cat.pace - 1);
+    else if (cat.cooldown > 0) cat.cooldown--;
+  }
   for (const it of intents) {
     if (!it.hideStay) continue;
     const cat = s.cats.find((c) => c.id === it.catId)!;

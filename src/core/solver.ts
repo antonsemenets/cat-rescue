@@ -26,7 +26,7 @@ export interface SolveResult {
 
 function stateKey(s: GameState, withTurn: boolean): string {
   const cats = s.cats
-    .map((c) => `${c.id}:${c.pos.x},${c.pos.y},${c.hunger},${c.trust},${c.mode},${c.timer},${c.patrolIndex},${c.target?.id ?? ''}`)
+    .map((c) => `${c.id}:${c.pos.x},${c.pos.y},${c.hunger},${c.trust},${c.mode},${c.timer},${c.patrolIndex},${c.cooldown},${c.target?.id ?? ''}`)
     .join('|');
   const traps = s.traps.map((t) => `${t.back.x},${t.back.y},${t.dir},${t.bait ?? ''},${t.occupiedBy ?? ''}`).join('|');
   const foods = s.foods
